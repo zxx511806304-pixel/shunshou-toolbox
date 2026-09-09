@@ -29,4 +29,23 @@
     <Content Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\runtime\**" Link="tools\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- WinUI 1.8 copies these to the build output, but dotnet publish does not
+       automatically carry the generated XAML resource files into an unpackaged app. -->
+  <Target Name="IncludeCompiledWinUiResourcesForPublish" BeforeTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <_ShunshouCompiledXaml Include="$(TargetDir)**\*.xbf" />
+    </ItemGroup>
+    <Error Condition="'@(_ShunshouCompiledXaml)' == ''" Text="Compiled WinUI XBF files are missing from the build output." />
+    <Error Condition="!Exists('$(TargetDir)$(AssemblyName).pri')" Text="The application's generated PRI resource index is missing." />
+    <ItemGroup>
+      <ResolvedFileToPublish Include="@(_ShunshouCompiledXaml)">
+        <RelativePath>%(_ShunshouCompiledXaml.RecursiveDir)%(_ShunshouCompiledXaml.Filename)%(_ShunshouCompiledXaml.Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+      <ResolvedFileToPublish Include="$(TargetDir)$(AssemblyName).pri">
+        <RelativePath>$(AssemblyName).pri</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
 </Project>

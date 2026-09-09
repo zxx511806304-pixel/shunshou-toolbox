@@ -21,7 +21,7 @@
 
 ## 可重复获取与部署
 
-先还原 NuGet，再运行 `scripts/Download-OcrModels.ps1`。脚本校验每个模型、字典、RapidOcrNet 许可与 NOTICE 的 SHA256，复制其他 NuGet 许可证。脚本默认从 `.tools/nuget` 或 `NUGET_PACKAGES` 读取依赖许可，也可传 `-NuGetRoot`。
+先还原 NuGet，再运行 `scripts/Download-OcrModels.ps1`。脚本校验每个模型、字典、RapidOcrNet 许可与 NOTICE 的 SHA256，复制其他 NuGet 许可证。脚本优先从 `NUGET_PACKAGES` 读取依赖许可；未设置时使用用户目录下的 `.nuget/packages`，也可传 `-NuGetRoot`。
 
 构建目录为 `runtime/ocr/`，发布包目录为 `tools/ocr/`。模型目录已在 `.gitignore` 中排除。主程序根据自己的绝对路径寻找模型，不依赖打开软件时的工作目录。
 

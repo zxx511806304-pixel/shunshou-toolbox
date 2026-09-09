@@ -31,10 +31,16 @@ try {
         '-p:Platform=x64' '-p:WindowsAppSDKSelfContained=true' '-p:PublishSingleFile=false' '-p:PublishTrimmed=false' `
         '-p:DebugType=None' '-p:DebugSymbols=false' "-p:Version=$Version" -o $stage --nologo
     if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
+    foreach ($resource in @('App.xbf','MainWindow.xbf','Shunshou.App.pri')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $stage $resource))) { throw "Published WinUI resource is missing: $resource" }
+    }
     $hostPath = Join-Path $stage 'Shunshou.App.exe'
     if (-not (Test-Path -LiteralPath $hostPath)) { throw 'Published apphost is missing.' }
     # Apphost embeds the original managed DLL name. Keep that DLL/runtimeconfig and the original host.
     Copy-Item -LiteralPath $hostPath -Destination (Join-Path $stage '顺手工具箱.exe')
+    # Unpackaged WinUI resolves its resource index from the running apphost name.
+    Copy-Item -LiteralPath (Join-Path $stage 'Shunshou.App.pri') -Destination (Join-Path $stage '顺手工具箱.pri')
+    if (-not (Test-Path -LiteralPath (Join-Path $stage '顺手工具箱.pri'))) { throw 'Chinese apphost resource index is missing.' }
     Copy-Item -Path (Join-Path $repoRoot 'runtime/vcredist/bin/*.dll') -Destination $stage -Force
     $vcLicenses = Join-Path $stage 'licenses/Microsoft.VisualCpp'
     New-Item -ItemType Directory -Force -Path $vcLicenses | Out-Null
