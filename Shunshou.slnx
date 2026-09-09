@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Shunshou.App/Shunshou.App.csproj" />
+    <Project Path="src/Shunshou.Core/Shunshou.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Shunshou.SmokeTests/Shunshou.SmokeTests.csproj" />
+  </Folder>
+</Solution>

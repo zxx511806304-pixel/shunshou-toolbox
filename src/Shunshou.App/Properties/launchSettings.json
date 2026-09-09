@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Shunshou.App (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Shunshou.App (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

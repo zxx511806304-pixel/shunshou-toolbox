@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <Version>0.1.0</Version>
+    <Company>顺手工具箱</Company>
+    <Product>顺手工具箱</Product>
+  </PropertyGroup>
+</Project>

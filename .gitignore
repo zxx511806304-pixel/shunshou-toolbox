@@ -1,0 +1,13 @@
+.tools/
+**/bin/
+**/obj/
+artifacts/
+dist/
+runtime/
+.vs/
+*.user
+*.suo
+*.log
+*.tmp
+TestResults/
+desktop.ini
