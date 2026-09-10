@@ -1,17 +1,23 @@
-"""Render the original geometric toolbox app mark (no external artwork). Requires Pillow."""
-from pathlib import Path
-from PIL import Image, ImageDraw
+"""Package the approved RGBA brand master into Windows icon sizes. Requires Pillow.
 
-root = Path(__file__).resolve().parents[1] / 'src' / 'Shunshou.App' / 'Assets'
+This only resizes/encodes the approved artwork; no drawing or background editing.
+"""
+from pathlib import Path
+from PIL import Image
+
+repo = Path(__file__).resolve().parents[1]
+source = repo / 'design' / 'brand' / 'ShunshouToolbox-master.png'
+root = repo / 'src' / 'Shunshou.App' / 'Assets'
 root.mkdir(parents=True, exist_ok=True)
-image = Image.new('RGBA', (1024, 1024))
-draw = ImageDraw.Draw(image)
-draw.rounded_rectangle((32, 32, 992, 992), radius=225, fill='#087E81')
-draw.rounded_rectangle((367, 234, 657, 414), radius=53, outline='#FFFFFF', width=46)
-draw.rounded_rectangle((205, 360, 819, 759), radius=61, fill='#FFFFFF')
-draw.rectangle((205, 503, 819, 531), fill='#087E81')
-draw.rounded_rectangle((451, 475, 573, 571), radius=24, fill='#E5B97A')
-draw.rounded_rectangle((294, 646, 730, 672), radius=13, fill='#CFE5E3')
+image = Image.open(source)
+image.load()
+if image.mode != 'RGBA' or image.width != image.height:
+    raise ValueError('Brand master must be a square RGBA image.')
+if image.getchannel('A').getextrema() != (0, 255):
+    raise ValueError('Brand master must contain true transparency and opaque artwork.')
 image.resize((256, 256), Image.Resampling.LANCZOS).save(root / 'Toolbox.png')
 image.save(root / 'AppIcon.ico', format='ICO', sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])
+with Image.open(root / 'AppIcon.ico') as icon:
+    if icon.ico.sizes() != {(size, size) for size in (16,24,32,48,64,128,256)}:
+        raise ValueError('ICO is missing a required Windows icon size.')
 print(root / 'AppIcon.ico')

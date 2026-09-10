@@ -111,7 +111,7 @@ public static class UpdateCoordination
         return blockers;
     }
 
-    private static bool IsApplicationEntryName(string name) => name.Equals("顺手工具箱", StringComparison.OrdinalIgnoreCase) || name.Equals("Shunshou.App", StringComparison.OrdinalIgnoreCase);
+    private static bool IsApplicationEntryName(string name) => PackageIdentity.IsSupportedExecutableName(name + ".exe") || name.Equals("Shunshou.App", StringComparison.OrdinalIgnoreCase);
     private static bool IsKnownApplicationName(string name) => IsApplicationEntryName(name) || name.Equals("ffmpeg", StringComparison.OrdinalIgnoreCase) || name.Equals("ffprobe", StringComparison.OrdinalIgnoreCase);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]

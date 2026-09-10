@@ -44,7 +44,7 @@ public sealed class PdfService
                 string stagedImage = Path.Combine(staging, "long.png");
                 await WriteLongPngAsync(pages, stagedImage, dpi, progress, ct);
                 ct.ThrowIfCancellationRequested();
-                string final = UniquePath(outputDir, Path.GetFileNameWithoutExtension(input) + $"_长图_{dpi}dpi", ".png");
+                string final = UniquePath(outputDir, Path.GetFileNameWithoutExtension(input) + $"_long_{dpi}dpi", ".png");
                 File.Move(stagedImage, final);
                 committed.Add(final);
             }
@@ -53,7 +53,7 @@ public sealed class PdfService
                 for (int i = 0; i < pages.Count; i++)
                 {
                     ct.ThrowIfCancellationRequested();
-                    string final = UniquePath(outputDir, Path.GetFileNameWithoutExtension(input) + $"_第{i + 1:D3}页_{dpi}dpi", ".png");
+                    string final = UniquePath(outputDir, Path.GetFileNameWithoutExtension(input) + $"_page{i + 1:D3}_{dpi}dpi", ".png");
                     File.Move(pages[i], final);
                     committed.Add(final);
                 }
@@ -110,7 +110,7 @@ public sealed class PdfService
             if (format == "docx") WriteWord(temporary, pages, ct);
             else WritePresentation(temporary, pages, ct);
             ct.ThrowIfCancellationRequested();
-            string final = UniquePath(outputDir, Path.GetFileNameWithoutExtension(input) + "_可编辑文字", "." + format);
+            string final = UniquePath(outputDir, Path.GetFileNameWithoutExtension(input) + "_text", "." + format);
             File.Move(temporary, final);
             progress?.Report(new ToolProgress(100, "可编辑文字已导出；复杂版式、图表与表格结构未还原"));
             return final;
@@ -139,7 +139,7 @@ public sealed class PdfService
             string temporary = Path.Combine(staging, "merged.pdf");
             output.Save(temporary);
             ct.ThrowIfCancellationRequested();
-            string final = UniquePath(outputDir, "合并文档", ".pdf");
+            string final = UniquePath(outputDir, "Merged", ".pdf");
             File.Move(temporary, final);
             progress?.Report(new ToolProgress(100, "PDF 已合并"));
             return final;
@@ -164,7 +164,7 @@ public sealed class PdfService
                 output.AddPage(source.Pages[p]);
                 string temporary = Path.Combine(staging, $"page-{p + 1}.pdf");
                 output.Save(temporary);
-                string final = UniquePath(outputDir, Path.GetFileNameWithoutExtension(input) + $"_第{p + 1:D3}页", ".pdf");
+                string final = UniquePath(outputDir, Path.GetFileNameWithoutExtension(input) + $"_page{p + 1:D3}", ".pdf");
                 File.Move(temporary, final);
                 finals.Add(final);
                 progress?.Report(new ToolProgress(100.0 * (p + 1) / source.PageCount, $"已拆分第 {p + 1}/{source.PageCount} 页"));

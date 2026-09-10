@@ -19,7 +19,7 @@ public sealed class ImageService
             ct.ThrowIfCancellationRequested();
             outputDir = Path.GetFullPath(outputDir);
             Directory.CreateDirectory(outputDir);
-            var operationDir = Path.Combine(outputDir, $"图片转换_{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid().ToString("N")[..8]}");
+            var operationDir = Path.Combine(outputDir, $"Images_{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid().ToString("N")[..8]}");
             Directory.CreateDirectory(operationDir);
             var outputs = new List<string>();
             for (var index = 0; index < inputPaths.Length; index++)
@@ -56,7 +56,7 @@ public sealed class ImageService
                         image.Alpha(AlphaOption.Remove);
                     }
                     if (outputFormat.Format is MagickFormat.Jpeg or MagickFormat.WebP) image.Quality = quality;
-                    var suffix = images.Count > 1 ? $"_第{frameIndex + 1:D3}帧" : "";
+                    var suffix = images.Count > 1 ? $"_frame{frameIndex + 1:D3}" : "";
                     var output = Path.Combine(operationDir, $"{index + 1:D3}_{stem}{suffix}.{outputFormat.Extension}");
                     using (var destination = new FileStream(output, FileMode.CreateNew, FileAccess.Write))
                         image.Write(destination, outputFormat.Format);

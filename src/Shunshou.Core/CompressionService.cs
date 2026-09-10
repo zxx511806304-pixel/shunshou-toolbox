@@ -33,7 +33,7 @@ public sealed class CompressionService
             var temporaryZip = Path.Combine(job, "result.zip");
             WriteZip(entries, temporaryZip, null, progress, 0, 90, ct);
             ValidateResult(temporaryZip, entries, ct);
-            var output = PublishFile(temporaryZip, outputDirectory, GetStem(inputPath) + "_打包", ".zip");
+            var output = PublishFile(temporaryZip, outputDirectory, GetStem(inputPath) + "_packed", ".zip");
             progress?.Report(new(100, "打包完成，原文件已保留"));
             return output;
         }
@@ -50,7 +50,7 @@ public sealed class CompressionService
             var extracted = Path.Combine(job, "extracted");
             ExtractChecked(inputPath, extracted, progress, ct);
             Directory.CreateDirectory(Path.GetFullPath(outputDirectory));
-            var output = NewOutputDirectory(outputDirectory, GetStem(inputPath) + "_解压");
+            var output = NewOutputDirectory(outputDirectory, GetStem(inputPath) + "_extracted");
             // Copy from a validated temporary tree. This also works across disk volumes.
             foreach (var entry in SnapshotFolderOrFile(extracted, ct))
             {
@@ -186,7 +186,7 @@ public sealed class CompressionService
             ValidateResult(bestZip, entries, ct);
             var reached = bestBytes < maxBytes;
             var published = PublishFile(bestZip, outputDirectory,
-                GetStem(inputPath) + (reached ? "_提交包" : "_压缩_未达目标"), ".zip");
+                GetStem(inputPath) + (reached ? "_upload" : "_compressed_over_limit"), ".zip");
             bestBytes = new FileInfo(published).Length;
             reached = bestBytes < maxBytes;
             var message = reached
@@ -440,7 +440,7 @@ public sealed class CompressionService
     {
         var full = Path.GetFullPath(input).TrimEnd(Path.DirectorySeparatorChar);
         var name = Directory.Exists(full) ? Path.GetFileName(full) : Path.GetFileNameWithoutExtension(full);
-        if (string.IsNullOrWhiteSpace(name)) name = "文件";
+        if (string.IsNullOrWhiteSpace(name)) name = "Files";
         return name.Length > 70 ? name[..70] : name;
     }
 

@@ -7,6 +7,100 @@ namespace Shunshou.Setup;
 
 internal static class SetupVerification
 {
+    public static int RunShortcutPreferences(string outputDirectory)
+    {
+        var output = Path.GetFullPath(outputDirectory);
+        if (Directory.Exists(output) && Directory.EnumerateFileSystemEntries(output).Any())
+            throw new IOException("Shortcut verification output must be a new empty directory.");
+        Directory.CreateDirectory(output);
+        var checks = new List<string>();
+        try
+        {
+            foreach (var scenario in new[] { "existing", "deleted", "fresh", "unrelated" })
+            {
+                var root = Path.Combine(output, scenario);
+                var target = Path.Combine(root, "installed");
+                var desktop = Path.Combine(root, "Desktop");
+                var registration = new FixtureRegistration();
+                var shortcuts = new DesktopShortcutService(desktop, registration);
+                var link = Path.Combine(desktop, PackageIdentity.ProductName + ".lnk");
+                if (scenario is "existing" or "deleted")
+                {
+                    CreateShortcutFixture(target, legacy: true);
+                    Require(shortcuts.EnsureShortcut(target, true).Status == ShortcutStatus.Created, "Legacy shortcut fixture must be created");
+                    Require(DesktopShortcutService.ReadShortcut(link).TargetPath == Path.Combine(target, PackageIdentity.LegacyExecutableName), "Fixture must start with the Chinese apphost");
+                    if (scenario == "deleted") File.Delete(link); // Only this generated fixture Desktop.
+                }
+                CreateShortcutFixture(target, legacy: false);
+                var legacyExecutable = Path.Combine(target, PackageIdentity.LegacyExecutableName);
+                if (File.Exists(legacyExecutable)) File.Delete(legacyExecutable); // Simulates removal of a managed old entry in this fixture.
+                byte[]? unrelated = null;
+                if (scenario == "unrelated")
+                {
+                    Directory.CreateDirectory(desktop);
+                    unrelated = [1, 7, 3, 9, 2];
+                    File.WriteAllBytes(link, unrelated);
+                }
+                var notes = SetupShortcutPreference.Apply(shortcuts, target, createRequested: false);
+                if (scenario == "existing")
+                {
+                    var actual = DesktopShortcutService.ReadShortcut(link);
+                    var expected = Path.Combine(target, PackageIdentity.ExecutableName);
+                    Require(notes.Count == 0 && actual.TargetPath == expected && actual.IconPath == expected,
+                        "Unchecked setup must repair the existing owned target and icon without launching the app");
+                    checks.Add("Unchecked setup repairs the legacy Chinese apphost link to the English target and icon without app launch");
+                }
+                else if (scenario == "unrelated")
+                {
+                    Require(notes.Count == 1 && File.ReadAllBytes(link).SequenceEqual(unrelated!), "Unrelated shortcut must remain byte-for-byte unchanged with a notice");
+                    checks.Add("Unchecked setup preserves an unrelated existing shortcut byte-for-byte and reports a notice");
+                }
+                else
+                {
+                    Require(notes.Count == 0 && !File.Exists(link), "Unchecked setup must not create or recreate a missing shortcut");
+                    shortcuts.InitializeOnNormalLaunch(target);
+                    Require(!File.Exists(link), "Later app startup must respect the unchecked choice");
+                    checks.Add(scenario == "deleted" ? "Deleted shortcut remains absent during update and later startup" : "Fresh unchecked install creates no shortcut during setup or later startup");
+                }
+            }
+            File.WriteAllText(Path.Combine(output, "setup-shortcut-verification.json"), JsonSerializer.Serialize(new
+            {
+                Passed = true, Checks = checks, UserDesktopWrites = 0, UserRegistryWrites = 0, UserProgramLaunches = 0
+            }, new JsonSerializerOptions { WriteIndented = true }));
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            File.WriteAllText(Path.Combine(output, "setup-shortcut-verification.json"), JsonSerializer.Serialize(new
+            {
+                Passed = false, Checks = checks, Error = ex.ToString()
+            }, new JsonSerializerOptions { WriteIndented = true }));
+            return 1;
+        }
+    }
+
+    private static void CreateShortcutFixture(string directory, bool legacy)
+    {
+        Directory.CreateDirectory(directory);
+        var executable = legacy ? PackageIdentity.LegacyExecutableName : PackageIdentity.ExecutableName;
+        var content = new Dictionary<string, string>
+        {
+            [executable] = "inert shortcut fixture",
+            [Path.ChangeExtension(executable, ".pri")] = "inert resource fixture",
+            ["Shunshou.App.dll"] = "inert application fixture"
+        };
+        foreach (var (name, text) in content) File.WriteAllText(Path.Combine(directory, name), text);
+        var files = content.Keys.Select(name =>
+        {
+            var bytes = File.ReadAllBytes(Path.Combine(directory, name));
+            return new { Path = name, Bytes = bytes.Length, Sha256 = Convert.ToHexString(SHA256.HashData(bytes)) };
+        }).ToArray();
+        File.WriteAllText(Path.Combine(directory, "package-manifest.json"), JsonSerializer.Serialize(new
+        {
+            Product = PackageIdentity.ProductName, Version = legacy ? "0.2.1" : "0.2.2", Architecture = "win-x64", Files = files
+        }));
+    }
+
     public static int RunUi(string outputDirectory)
     {
         var output = Path.GetFullPath(outputDirectory);
@@ -51,6 +145,8 @@ internal static class SetupVerification
         try
         {
             var metadata = Payload.ReadMetadata();
+            Require(RunShortcutPreferences(Path.Combine(output, "shortcut-preferences")) == 0, "Setup shortcut opt-out regression");
+            checks.Add("Unchecked setup repairs existing owned shortcuts without creating missing or replacing unrelated links");
             var payload = await Payload.ExtractAsync(Path.Combine(output, "payload"), metadata, null, default);
             checks.Add("Embedded payload length and SHA256 match build metadata");
             var service = new DeploymentService();
@@ -59,6 +155,8 @@ internal static class SetupVerification
             var installed = await service.InstallOrUpdateAsync(freshRequest);
             Require(!installed.WasUpdate && installed.PreviousBackupDirectory is null, "Initial deployment result");
             await VerifyFilesAsync(fresh);
+            Require(PackageIdentity.GetExecutablePath(fresh) == Path.Combine(fresh, PackageIdentity.ExecutableName)
+                && File.Exists(Path.Combine(fresh, "ShunshouToolbox.pri")), "English apphost and matching WinUI resources");
             checks.Add("Fresh extraction: every managed file matches the embedded manifest");
 
             var locks = Path.Combine(output, "locks");
@@ -84,7 +182,7 @@ internal static class SetupVerification
             Require(link.Shortcut?.Status == ShortcutStatus.Created && registration.Directory == fresh, "First launch creates one shortcut and remembers path");
             var shortcutPath = Path.Combine(desktop, "顺手工具箱.lnk");
             var info = DesktopShortcutService.ReadShortcut(shortcutPath);
-            Require(info.TargetPath == Path.Combine(fresh, "顺手工具箱.exe") && info.WorkingDirectory == fresh, "Shortcut destination");
+            Require(info.TargetPath == Path.Combine(fresh, PackageIdentity.ExecutableName) && info.WorkingDirectory == fresh, "Shortcut destination");
             File.Delete(shortcutPath); // Only the fixture Desktop under the requested empty output root.
             Require(shortcutService.EnsureShortcut(fresh).Status == ShortcutStatus.KeptDeleted, "Respect manual deletion");
             Require(shortcutService.EnsureShortcut(fresh, true).Status == ShortcutStatus.Created, "Explicit shortcut recreation");
@@ -95,6 +193,8 @@ internal static class SetupVerification
             var baseline = baselineIndex >= 0 ? Path.GetFullPath(args[baselineIndex + 1]) : payload;
             var baselineHash = await HashAsync(baseline);
             await service.InstallOrUpdateAsync(new(baseline, baselineHash, target));
+            var baselineExecutable = PackageIdentity.GetExecutablePath(target);
+            Require(baselineExecutable is not null, "Legacy or current baseline entry is verified before update");
             var preserved = new Dictionary<string, string>
             {
                 ["data/rename-history/session.json"] = "{\"test\":\"rename recovery\"}",
@@ -123,7 +223,15 @@ internal static class SetupVerification
                 Require(await File.ReadAllTextAsync(Path.Combine(target, relative)) == content, "New version preserves " + relative);
                 Require(await File.ReadAllTextAsync(Path.Combine(updated.PreviousBackupDirectory!, relative)) == content, "Backup preserves " + relative);
             }
-            Require(shortcutService.EnsureShortcut(target, true).Status == ShortcutStatus.AlreadyCorrect, "Shortcut remains stable after update");
+            var updatedShortcut = shortcutService.EnsureShortcut(target, true);
+            Require(updatedShortcut.Status is ShortcutStatus.AlreadyCorrect or ShortcutStatus.Updated, "Shortcut follows the current entry after update");
+            Require(DesktopShortcutService.ReadShortcut(shortcutPath).TargetPath == Path.Combine(target, PackageIdentity.ExecutableName), "Updated shortcut targets the English apphost");
+            if (Path.GetFileName(baselineExecutable) == PackageIdentity.LegacyExecutableName)
+            {
+                Require(!File.Exists(Path.Combine(target, PackageIdentity.LegacyExecutableName)), "Obsolete managed Chinese entry is absent from current folder");
+                Require(File.Exists(Path.Combine(updated.PreviousBackupDirectory!, PackageIdentity.LegacyExecutableName)), "Previous Chinese entry remains in retained backup");
+                checks.Add("Legacy Chinese entry → English apphost upgrade repairs the existing Chinese desktop shortcut");
+            }
             checks.Add("Full old ZIP → embedded version update, exact settings/output/history/key preservation and retained backup");
             checks.Add("Desktop and registration are isolated fixtures; no real user desktop/registry writes or program launch");
             await File.WriteAllTextAsync(Path.Combine(output, "setup-verification.json"), JsonSerializer.Serialize(new

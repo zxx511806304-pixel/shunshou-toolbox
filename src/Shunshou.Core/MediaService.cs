@@ -306,7 +306,7 @@ public sealed class MediaService(string? engineDirectory = null)
         directory = Path.GetFullPath(directory);
         Directory.CreateDirectory(directory);
         if (stem.Length > 70) stem = stem[..70];
-        var output = Path.Combine(directory, $"{stem}_转换_{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid().ToString("N")[..8]}.{extension}");
+        var output = Path.Combine(directory, $"{stem}_converted_{DateTime.Now:yyyyMMdd_HHmmss}_{Guid.NewGuid().ToString("N")[..8]}.{extension}");
         var partial = output + ".partial";
         try
         {

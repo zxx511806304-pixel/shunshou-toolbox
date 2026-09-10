@@ -16,6 +16,10 @@ public sealed partial class MainWindow
         {
             RootLayout.RequestedTheme = ElementTheme.Light;
             await Task.Delay(600);
+            RequireUi(OutputDirectory.Text == Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "ShunshouToolbox", "Output"), "Default output path is not the approved English directory");
+            await SaveScreenshot(Path.Combine(output, "home-branding.png"));
+            checks.Add("English default output directory and initial window branding");
             string previewFixtures = Path.Combine(output, "generated-previews");
             checks.AddRange(await SearchPreviewVerification.RunAsync(DispatcherQueue, previewFixtures));
             string source = Path.Combine(output, "search-source");

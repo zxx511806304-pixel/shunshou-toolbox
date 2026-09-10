@@ -10,6 +10,8 @@ internal static class Program
         {
             if (args.Length >= 2 && args[0] == "--verify-setup")
                 return SetupVerification.RunAsync(args).GetAwaiter().GetResult();
+            if (args.Length == 2 && args[0] == "--verify-setup-shortcuts")
+                return SetupVerification.RunShortcutPreferences(args[1]);
             if (args.Length == 2 && args[0] == "--verify-setup-ui")
                 return SetupVerification.RunUi(args[1]);
             if (args.Length == 2 && args[0] == "--screenshot")
