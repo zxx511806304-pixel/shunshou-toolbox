@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '0.2.1',
+    [string]$Version = '0.2.2',
     [string]$OutputRoot = '',
     [string]$Dotnet = '',
     [switch]$SkipZip
@@ -37,10 +37,10 @@ try {
     $hostPath = Join-Path $stage 'Shunshou.App.exe'
     if (-not (Test-Path -LiteralPath $hostPath)) { throw 'Published apphost is missing.' }
     # Apphost embeds the original managed DLL name. Keep that DLL/runtimeconfig and the original host.
-    Copy-Item -LiteralPath $hostPath -Destination (Join-Path $stage '顺手工具箱.exe')
+    Copy-Item -LiteralPath $hostPath -Destination (Join-Path $stage 'ShunshouToolbox.exe')
     # Unpackaged WinUI resolves its resource index from the running apphost name.
-    Copy-Item -LiteralPath (Join-Path $stage 'Shunshou.App.pri') -Destination (Join-Path $stage '顺手工具箱.pri')
-    if (-not (Test-Path -LiteralPath (Join-Path $stage '顺手工具箱.pri'))) { throw 'Chinese apphost resource index is missing.' }
+    Copy-Item -LiteralPath (Join-Path $stage 'Shunshou.App.pri') -Destination (Join-Path $stage 'ShunshouToolbox.pri')
+    if (-not (Test-Path -LiteralPath (Join-Path $stage 'ShunshouToolbox.pri'))) { throw 'Product apphost resource index is missing.' }
     Copy-Item -Path (Join-Path $repoRoot 'runtime/vcredist/bin/*.dll') -Destination $stage -Force
     $vcLicenses = Join-Path $stage 'licenses/Microsoft.VisualCpp'
     New-Item -ItemType Directory -Force -Path $vcLicenses | Out-Null
@@ -64,7 +64,7 @@ try {
         Remove-Item -LiteralPath $safe
     }
     Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination (Join-Path $stage 'README.md')
-    Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination (Join-Path $stage '使用说明.md')
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination (Join-Path $stage 'Usage.md')
     Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD-PARTY-NOTICES.md') -Destination $stage
     if (Test-Path -LiteralPath (Join-Path $repoRoot 'docs')) { Copy-Item -LiteralPath (Join-Path $repoRoot 'docs') -Destination $stage -Recurse }
     if (Test-Path -LiteralPath (Join-Path $repoRoot 'CHANGELOG.md')) { Copy-Item -LiteralPath (Join-Path $repoRoot 'CHANGELOG.md') -Destination $stage }

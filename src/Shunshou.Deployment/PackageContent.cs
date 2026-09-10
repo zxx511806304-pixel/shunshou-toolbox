@@ -6,6 +6,9 @@ namespace Shunshou.Deployment;
 
 internal sealed class PackageContent : IDisposable
 {
+    internal const string CurrentExecutableName = "ShunshouToolbox.exe";
+    internal const string LegacyExecutableName = "顺手工具箱.exe";
+    internal const string CurrentResourceName = "ShunshouToolbox.pri";
     internal PackageManifest Manifest { get; }
     internal Dictionary<string, PackageFile> Files { get; }
     internal HashSet<string> Directories { get; }
@@ -116,8 +119,11 @@ internal sealed class PackageContent : IDisposable
             AddParents(parents, file.Path);
         }
         if (parents.Any(paths.Contains)) throw new InvalidDataException("软件清单文件路径相互冲突。");
-        if (!paths.Contains("顺手工具箱.exe") || !paths.Contains("Shunshou.App.dll") || !paths.Contains("Shunshou.Core.dll"))
+        if ((!paths.Contains(CurrentExecutableName) && !paths.Contains(LegacyExecutableName))
+            || !paths.Contains("Shunshou.App.dll") || !paths.Contains("Shunshou.Core.dll"))
             throw new InvalidDataException("此文件夹缺少顺手工具箱产品标识文件。");
+        if (paths.Contains(CurrentExecutableName) && !paths.Contains(CurrentResourceName))
+            throw new InvalidDataException("此安装包缺少与主程序同名的界面资源文件。");
         return manifest;
     }
 

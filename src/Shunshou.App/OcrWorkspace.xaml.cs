@@ -154,7 +154,7 @@ public sealed partial class OcrWorkspace : UserControl, IDisposable, IAsyncDispo
             using var bitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
             linked.Token.ThrowIfCancellationRequested();
             Directory.CreateDirectory(_clipboardDirectory);
-            createdPath = Path.Combine(_clipboardDirectory, "截图-" + Guid.NewGuid().ToString("N") + ".png");
+            createdPath = Path.Combine(_clipboardDirectory, "Screenshot-" + Guid.NewGuid().ToString("N") + ".png");
             _ownedClipboardFiles.Add(createdPath);
             using (var fileStream = new FileStream(createdPath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
             using (var output = fileStream.AsRandomAccessStream())
@@ -213,7 +213,7 @@ public sealed partial class OcrWorkspace : UserControl, IDisposable, IAsyncDispo
             var picker = new FileSavePicker
             {
                 SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
-                SuggestedFileName = string.IsNullOrWhiteSpace(_inputPath) ? "识别文字" : Path.GetFileNameWithoutExtension(_inputPath) + "_文字"
+                SuggestedFileName = string.IsNullOrWhiteSpace(_inputPath) ? "RecognizedText" : Path.GetFileNameWithoutExtension(_inputPath) + "_text"
             };
             picker.FileTypeChoices.Add("文本文件", [".txt"]);
             WinRT.Interop.InitializeWithWindow.Initialize(picker, HostWindowHandle);

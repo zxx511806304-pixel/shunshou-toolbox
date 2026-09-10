@@ -49,6 +49,8 @@ public static class MediaTests
         var originalHash = CompressionTests.HashFile(wav);
         var output = Path.Combine(root, "output");
         var mp3 = await service.ConvertAsync(wav, output, "mp3", 200_000, null, default);
+        CompressionTests.Check(Path.GetFileName(mp3).StartsWith(Path.GetFileNameWithoutExtension(wav) + "_converted_", StringComparison.Ordinal),
+            "media conversion appends English suffix without changing original Chinese and literal filename characters");
         CompressionTests.Check(new FileInfo(mp3).Length <= 195_000, "MP3 actual target size includes 2.5% margin");
         await VerifyProbe(engines, mp3, 24, "mp3", false);
         var secondMp3 = await service.ConvertAsync(wav, output, "mp3", null, null, default);

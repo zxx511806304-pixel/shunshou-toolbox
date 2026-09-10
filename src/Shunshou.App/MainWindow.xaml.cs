@@ -49,7 +49,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Move(new PointInt32(workArea.X + (workArea.Width - windowWidth) / 2, workArea.Y + (workArea.Height - windowHeight) / 2));
         if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
             presenter.PreferredMinimumWidth = Math.Min((int)(940 * scale), windowWidth);
-        OutputDirectory.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "顺手工具箱输出");
+        OutputDirectory.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "ShunshouToolbox", "Output");
         _ready = true;
         InitializeSearch();
         InitializeFileDrop();

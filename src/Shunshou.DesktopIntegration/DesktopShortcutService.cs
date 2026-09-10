@@ -8,7 +8,7 @@ namespace Shunshou.DesktopIntegration;
 public enum ShortcutStatus { Created, Updated, AlreadyCorrect, KeptDeleted, UnrelatedShortcut, InvalidPackage }
 public sealed record ShortcutResult(ShortcutStatus Status, string? ShortcutPath);
 public sealed record DesktopInitializationResult(ShortcutResult? Shortcut, IReadOnlyList<string> Warnings);
-public sealed record ShortcutInfo(string TargetPath, string WorkingDirectory, string Description, string Arguments);
+public sealed record ShortcutInfo(string TargetPath, string WorkingDirectory, string Description, string Arguments, string IconPath = "", int IconIndex = 0);
 
 public sealed class DesktopShortcutService
 {
@@ -54,9 +54,9 @@ public sealed class DesktopShortcutService
 
     public ShortcutResult EnsureShortcut(string directory, bool explicitRequest = false)
     {
-        if (!PackageIdentity.IsValidDirectory(directory)) return new(ShortcutStatus.InvalidPackage, null);
+        var target = PackageIdentity.GetExecutablePath(directory);
+        if (target is null) return new(ShortcutStatus.InvalidPackage, null);
         directory = Path.GetFullPath(directory);
-        var target = Path.Combine(directory, PackageIdentity.ExecutableName);
         var dataDirectory = Path.Combine(directory, "data");
         var markerPath = Path.Combine(dataDirectory, "desktop-shortcut.json");
         Directory.CreateDirectory(dataDirectory);
@@ -94,6 +94,7 @@ public sealed class DesktopShortcutService
                 WriteShortcut(stagedPath, target, directory, ShortcutDescription);
                 try { File.Move(stagedPath, shortcutPath, overwrite: false); }
                 catch (IOException) when (File.Exists(shortcutPath)) { return new(ShortcutStatus.UnrelatedShortcut, shortcutPath); }
+                NotifyShortcutChanged(shortcutPath, target);
                 return new(ShortcutStatus.Created, shortcutPath);
             }
             finally { if (File.Exists(stagedPath)) File.Delete(stagedPath); }
@@ -111,17 +112,25 @@ public sealed class DesktopShortcutService
             try { current = ReadShortcut(snapshotPath); }
             catch (COMException) { return new(ShortcutStatus.UnrelatedShortcut, shortcutPath); }
             if (current.Description != ShortcutDescription || !string.IsNullOrEmpty(current.Arguments) ||
-                !string.Equals(Path.GetFileName(current.TargetPath), PackageIdentity.ExecutableName, StringComparison.OrdinalIgnoreCase))
+                !PackageIdentity.IsSupportedExecutableName(Path.GetFileName(current.TargetPath)))
                 return new(ShortcutStatus.UnrelatedShortcut, shortcutPath);
-            if (string.Equals(Path.GetFullPath(current.TargetPath), target, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(Path.GetFullPath(current.WorkingDirectory), directory, StringComparison.OrdinalIgnoreCase))
+            if (MatchesAbsolutePath(current.TargetPath, target) && MatchesAbsolutePath(current.WorkingDirectory, directory) &&
+                MatchesAbsolutePath(current.IconPath, target) && current.IconIndex == 0)
+            {
+                // A package update may replace the icon at the same path. Notify Explorer without
+                // rewriting an already-correct link or resetting unrelated system icon caches.
+                existing.Dispose();
+                NotifyShortcutChanged(shortcutPath, target);
                 return new(ShortcutStatus.AlreadyCorrect, shortcutPath);
+            }
             WriteShortcut(snapshotPath, target, directory, ShortcutDescription);
             using var replacement = File.OpenRead(snapshotPath);
             existing.Position = 0;
             replacement.CopyTo(existing);
             existing.SetLength(existing.Position);
             existing.Flush(flushToDisk: true);
+            existing.Dispose();
+            NotifyShortcutChanged(shortcutPath, target);
             return new(ShortcutStatus.Updated, shortcutPath);
         }
         finally { if (File.Exists(snapshotPath)) File.Delete(snapshotPath); }
@@ -137,13 +146,26 @@ public sealed class DesktopShortcutService
             var working = new StringBuilder(32768);
             var description = new StringBuilder(2048);
             var arguments = new StringBuilder(32768);
+            var icon = new StringBuilder(32768);
             link.GetPath(target, target.Capacity, nint.Zero, 4);
             link.GetWorkingDirectory(working, working.Capacity);
             link.GetDescription(description, description.Capacity);
             link.GetArguments(arguments, arguments.Capacity);
-            return new(target.ToString(), working.ToString(), description.ToString(), arguments.ToString());
+            link.GetIconLocation(icon, icon.Capacity, out var iconIndex);
+            return new(target.ToString(), working.ToString(), description.ToString(), arguments.ToString(), icon.ToString(), iconIndex);
         }
         finally { Marshal.FinalReleaseComObject(link); }
+    }
+
+    private static bool MatchesAbsolutePath(string actual, string expected) =>
+        Path.IsPathFullyQualified(actual) && string.Equals(Path.GetFullPath(actual), expected, StringComparison.OrdinalIgnoreCase);
+
+    private static void NotifyShortcutChanged(string shortcutPath, string executablePath)
+    {
+        const uint updateItem = 0x00002000;
+        const uint pathUnicode = 0x0005;
+        SHChangeNotify(updateItem, pathUnicode, executablePath, nint.Zero);
+        SHChangeNotify(updateItem, pathUnicode, shortcutPath, nint.Zero);
     }
 
     private static void WriteShortcut(string path, string target, string workingDirectory, string description)
@@ -172,6 +194,8 @@ public sealed class DesktopShortcutService
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern int SHGetKnownFolderPath(ref Guid id, uint flags, nint token, out nint path);
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern void SHChangeNotify(uint eventId, uint flags, [MarshalAs(UnmanagedType.LPWStr)] string item1, nint item2);
     [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
     private class ShellLink { }
     [ComImport, Guid("000214F9-0000-0000-C000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

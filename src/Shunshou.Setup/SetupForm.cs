@@ -85,7 +85,7 @@ internal sealed class SetupForm : Form
         _directory.TextChanged += (_, _) => RefreshTargetSummary();
         _browse.Click += (_, _) =>
         {
-            using var picker = new FolderBrowserDialog { Description = "选择软件文件夹。更新时请选择旧版“顺手工具箱.exe”所在的文件夹。", UseDescriptionForTitle = true, InitialDirectory = Directory.Exists(_directory.Text) ? _directory.Text : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) };
+            using var picker = new FolderBrowserDialog { Description = "选择软件文件夹。更新时请选择旧版程序所在的文件夹。", UseDescriptionForTitle = true, InitialDirectory = Directory.Exists(_directory.Text) ? _directory.Text : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) };
             if (picker.ShowDialog(this) == DialogResult.OK) _directory.Text = picker.SelectedPath;
         };
         _start.Click += async (_, _) => { if (_finished) Close(); else await RunAsync(); };
@@ -183,22 +183,7 @@ internal sealed class SetupForm : Form
             var notes = new List<string>();
             try { _registration.RememberDirectory(result.TargetDirectory); }
             catch { notes.Add("本次未能记住软件位置，下次更新时可手动选择。"); }
-            if (_shortcut.Checked)
-            {
-                try
-                {
-                    var shortcut = _shortcuts.EnsureShortcut(result.TargetDirectory, explicitRequest: true);
-                    if (shortcut.Status == ShortcutStatus.UnrelatedShortcut) notes.Add("桌面已有同名快捷方式，已保留原样。可从软件文件夹打开。");
-                    else if (shortcut.Status == ShortcutStatus.InvalidPackage) notes.Add("快捷方式未创建，请从软件文件夹打开。");
-                }
-                catch (Exception ex) { notes.Add("桌面快捷方式未创建：" + ex.Message); }
-            }
-            else
-            {
-                // Record the explicit opt-out so first normal app launch respects it.
-                try { WriteShortcutOptOut(result.TargetDirectory); }
-                catch { notes.Add("未能保存快捷方式偏好。"); }
-            }
+            notes.AddRange(SetupShortcutPreference.Apply(_shortcuts, result.TargetDirectory, _shortcut.Checked));
             _finished = true;
             _openDirectory.Visible = true;
             _start.Text = "完成";
@@ -210,7 +195,12 @@ internal sealed class SetupForm : Form
             _progress.Value = 100;
             if (_launch.Checked)
             {
-                try { Process.Start(new ProcessStartInfo(Path.Combine(result.TargetDirectory, "顺手工具箱.exe")) { UseShellExecute = true, WorkingDirectory = result.TargetDirectory }); }
+                try
+                {
+                    var executable = PackageIdentity.GetExecutablePath(result.TargetDirectory)
+                        ?? throw new IOException("软件主程序校验失败，请重新解压完整软件包。");
+                    Process.Start(new ProcessStartInfo(executable) { UseShellExecute = true, WorkingDirectory = result.TargetDirectory });
+                }
                 catch (Exception ex) { _status.Text += " 自动打开失败，请从软件文件夹启动：" + ex.Message; }
             }
         }
@@ -229,12 +219,6 @@ internal sealed class SetupForm : Form
                 _progress.Visible = false;
             }
         }
-    }
-
-    private void WriteShortcutOptOut(string target)
-    {
-        // Implemented through the shared service so marker schema remains consistent.
-        _shortcuts.RecordOptOut(target);
     }
 
     internal async Task VerifyUserFlowAsync(string screenshotPath)

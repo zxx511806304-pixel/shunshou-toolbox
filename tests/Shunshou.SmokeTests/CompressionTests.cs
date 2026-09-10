@@ -12,18 +12,32 @@ public static class CompressionTests
     public static async Task RunBoundaryAsync(string root)
     {
         root = Path.Combine(Path.GetFullPath(root), "compression-boundary");
-        var source = Path.Combine(root, "source");
+        var source = Path.Combine(root, "原始资料");
         Directory.CreateDirectory(source);
         var bytes = new byte[19_600];
         new Random(5678).NextBytes(bytes);
-        File.WriteAllBytes(Path.Combine(source, "payload.bin"), bytes);
+        File.WriteAllBytes(Path.Combine(source, "原始文件.bin"), bytes);
+        Directory.CreateDirectory(Path.Combine(source, "内部空目录"));
         var service = new CompressionService();
         var result = await service.CompressAsync(source, Path.Combine(root, "output"), 20_000, false, false, null, default);
         Check(result.OutputBytes > 19_500 && result.OutputBytes < 20_000, "fixture lies between the optimization budget and upload limit");
         Check(result.ReachedTarget, "below upload limit counts as success even without the full margin");
+        Check(Path.GetFileName(result.OutputPath).StartsWith("原始资料_upload_", StringComparison.Ordinal), "only generated upload suffix is translated");
         Check(result.Message.Contains("未留足"), "reduced margin is explicitly explained");
         var atLimit = await service.CompressAsync(source, Path.Combine(root, "exact-limit"), result.OutputBytes, false, false, null, default);
         Check(atLimit.OutputBytes == result.OutputBytes && !atLimit.ReachedTarget, "exactly equal to strict upload limit is not success");
+        Check(Path.GetFileName(atLimit.OutputPath).StartsWith("原始资料_compressed_over_limit_", StringComparison.Ordinal), "unmet target gets English status suffix");
+        var packed = await service.CreateZipAsync(source, Path.Combine(root, "packed"), null, default);
+        Check(Path.GetFileName(packed).StartsWith("原始资料_packed_", StringComparison.Ordinal), "archive name retains original Chinese stem");
+        using (var archive = ZipFile.OpenRead(packed))
+        {
+            Check(archive.GetEntry("原始文件.bin") is not null && archive.GetEntry("内部空目录/") is not null,
+                "user filenames and directory names inside ZIP remain unchanged");
+        }
+        var extracted = await service.ExtractZipAsync(packed, Path.Combine(root, "extracted"), null, default);
+        Check(Path.GetFileName(extracted).Contains("_extracted_", StringComparison.Ordinal), "generated extraction folder suffix is English");
+        Check(File.ReadAllBytes(Path.Combine(extracted, "原始文件.bin")).SequenceEqual(bytes)
+            && Directory.Exists(Path.Combine(extracted, "内部空目录")), "extraction preserves Chinese structure and original bytes");
         Console.WriteLine("PASS: below-limit output succeeds with a reduced-margin notice; exactly-at-limit output is rejected.");
     }
 

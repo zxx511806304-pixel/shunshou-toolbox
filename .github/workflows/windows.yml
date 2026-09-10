@@ -42,7 +42,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build portable package
         shell: pwsh
-        run: ./scripts/Build-Portable.ps1
+        run: |
+          ./scripts/Build-Portable.ps1
+          $portableVersion = ([xml](Get-Content -LiteralPath ./Directory.Build.props -Raw)).Project.PropertyGroup.Version
+          $portableRoot = Join-Path $PWD "dist/ShunshouToolbox-$portableVersion-win-x64"
+          foreach ($entry in @('ShunshouToolbox.exe', 'ShunshouToolbox.pri', 'Usage.md')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $portableRoot $entry) -PathType Leaf)) { throw "Portable entry is missing: $entry" }
+          }
+          if (Test-Path -LiteralPath (Join-Path $portableRoot '顺手工具箱.exe')) { throw 'New portable package still includes the obsolete Chinese apphost.' }
       - name: Build offline self-extracting package
         shell: pwsh
         run: ./scripts/Build-Setup.ps1

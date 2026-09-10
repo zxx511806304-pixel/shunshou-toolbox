@@ -23,6 +23,7 @@ public static class PdfTests
         string imagesFolder = Path.Combine(folder, "逐页");
         var images = await service.ExportImagesAsync(input, imagesFolder, 300, false);
         Check(images.Count == 3, "逐页导出应包含全部 3 页");
+        Check(Path.GetFileName(images[0]) == "中英文示例_page001_300dpi.png", "PDF 图片保留原名称，仅页码后缀使用英文");
         var first = ReadPngHeader(images[0]);
         Check(first.Width is >= 2480 and <= 2482 && first.Height is >= 3507 and <= 3509,
             $"A4 300 DPI 应约为 2481 × 3508，实际 {first.Width} × {first.Height}");
@@ -31,6 +32,7 @@ public static class PdfTests
         Console.WriteLine("PASS PDF: 3 页中英文 A4 / 300 DPI 逐页导出 + 不覆盖");
 
         var longResult = await service.ExportImagesAsync(input, Path.Combine(folder, "三页长图"), 300, true);
+        Check(Path.GetFileName(longResult.Single()) == "中英文示例_long_300dpi.png", "长图使用英文附加后缀");
         var longHeader = ReadPngHeader(longResult.Single());
         Check(longHeader.Width == first.Width && longHeader.Height == images.Sum(p => ReadPngHeader(p).Height),
             "长图必须保持逐页分辨率，总高度等于各页高度之和");
@@ -41,6 +43,7 @@ public static class PdfTests
         foreach (string format in new[] { "docx", "pptx" })
         {
             string output = await service.ExportEditableAsync(input, Path.Combine(folder, "可编辑"), format);
+            Check(Path.GetFileName(output) == "中英文示例_text." + format, "可编辑文本导出保留原名称并使用英文后缀");
             using OpenXmlPackage package = format == "docx" ? WordprocessingDocument.Open(output, false) : PresentationDocument.Open(output, false);
             var errors = new OpenXmlValidator().Validate(package).ToArray();
             Check(errors.Length == 0, $"{format} OpenXml 验证失败: " + string.Join("; ", errors.Select(x => x.Description + " " + x.Path?.XPath)));
@@ -85,8 +88,10 @@ public static class PdfTests
 
         var split = await service.SplitAsync(input, Path.Combine(folder, "拆分"));
         Check(split.Count == 3, "拆分应输出 3 个 PDF");
+        Check(Path.GetFileName(split[0]) == "中英文示例_page001.pdf", "拆分结果仅附加英文页码后缀");
         foreach (string single in split) { using var pdf = UglyToad.PdfPig.PdfDocument.Open(single); Check(pdf.NumberOfPages == 1, "拆分页数应为 1"); }
         string merged = await service.MergeAsync(split, Path.Combine(folder, "合并"));
+        Check(Path.GetFileName(merged) == "Merged.pdf", "合并文档的自动名称使用英文");
         using (var pdf = UglyToad.PdfPig.PdfDocument.Open(merged)) Check(pdf.NumberOfPages == 3, "合并后应有 3 页");
         using (var cancelled = new CancellationTokenSource())
         {

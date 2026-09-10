@@ -23,13 +23,47 @@ var results = new List<object>();
 var failures = 0;
 await Run("initial install uses exact folder and verified manifest", async f =>
 {
-    var package = f.Package("0.2.1");
+    var package = f.Package("0.2.2");
     var inspect = await new DeploymentService().InspectAsync(package.Request(f.Target));
-    Check(!inspect.IsUpdate && inspect.Version == "0.2.1" && inspect.PreservedBytes == 0, "Initial inspection metadata.");
+    Check(!inspect.IsUpdate && inspect.Version == "0.2.2" && inspect.PreservedBytes == 0, "Initial inspection metadata.");
     var result = await new DeploymentService().InstallOrUpdateAsync(package.Request(f.Target));
     Check(!result.WasUpdate && result.PreviousBackupDirectory is null, "New folder must not report an old install.");
-    Check(result.TargetDirectory == f.Target && File.Exists(Path.Combine(f.Target, "顺手工具箱.exe")), "Install must use chosen folder directly.");
-    Check(await f.Version(f.Target) == "0.2.1", "Version after install.");
+    Check(result.TargetDirectory == f.Target && File.Exists(Path.Combine(f.Target, PackageContent.CurrentExecutableName))
+        && File.Exists(Path.Combine(f.Target, PackageContent.CurrentResourceName)), "Install must use chosen folder with English executable and matching PRI.");
+    Check(!File.Exists(Path.Combine(f.Target, PackageContent.LegacyExecutableName)), "New package must not add a Chinese apphost.");
+    Check(await f.Version(f.Target) == "0.2.2", "Version after install.");
+});
+await Run("legacy 0.2.1 Chinese entry upgrades to English 0.2.2 while preserving user names and backup", async f =>
+{
+    await f.Install("0.2.1");
+    var user = f.WriteUser("data/用户记录/课程.txt", "unchanged-user-data");
+    var backupKey = f.WriteUser("data/uninstall-backups/.integrity-key", "unchanged-key");
+    var original = await FileTrees.CaptureAsync(f.Target, default);
+    Check(File.Exists(Path.Combine(f.Target, PackageContent.LegacyExecutableName)), "Fixture must start with the legacy Chinese entry.");
+    var result = await new DeploymentService().InstallOrUpdateAsync(f.Package("0.2.2").Request(f.Target));
+    Check(result.WasUpdate && result.TargetDirectory == f.Target, "Upgrade must keep the user-selected directory.");
+    Check(File.Exists(Path.Combine(f.Target, PackageContent.CurrentExecutableName))
+        && File.Exists(Path.Combine(f.Target, PackageContent.CurrentResourceName)), "English executable and matching PRI deployed.");
+    Check(!File.Exists(Path.Combine(f.Target, PackageContent.LegacyExecutableName))
+        && !File.Exists(Path.Combine(f.Target, "顺手工具箱.pri")), "Old managed aliases must not remain in the active version.");
+    Check(File.ReadAllText(user) == "unchanged-user-data" && File.ReadAllText(backupKey) == "unchanged-key", "Chinese user paths and backup key remain exact.");
+    FileTrees.Equal(original, await FileTrees.CaptureAsync(result.PreviousBackupDirectory!, default));
+});
+foreach (var collision in new[] { PackageContent.CurrentExecutableName, PackageContent.CurrentResourceName })
+    await Run("English entry migration preserves conflicting untracked user file: " + collision, async f =>
+    {
+        await f.Install("0.2.1");
+        f.WriteUser(collision, "user-content-that-must-not-be-replaced");
+        var before = await FileTrees.CaptureAsync(f.Target, default);
+        await Refuses(() => new DeploymentService().InstallOrUpdateAsync(f.Package("0.2.2").Request(f.Target)));
+        FileTrees.Equal(before, await FileTrees.CaptureAsync(f.Target, default));
+    });
+await Run("English apphost without its matching PRI is rejected before deployment", async f =>
+{
+    await f.Install("0.2.1");
+    var before = await FileTrees.CaptureAsync(f.Target, default);
+    await Refuses(() => new DeploymentService().InstallOrUpdateAsync(f.Package("0.2.2", includeEntryResource: false).Request(f.Target)));
+    FileTrees.Equal(before, await FileTrees.CaptureAsync(f.Target, default));
 });
 await Run("update preserves all user files empty folders metadata and retained backup", async f =>
 {
@@ -409,15 +443,18 @@ sealed class Fixture
     internal Fixture(string root) { Root = root; Directory.CreateDirectory(root); }
     internal Package Package(string version, Dictionary<string, string>? extra = null,
         Action<PackageManifest>? modifyManifest = null, Func<byte[], byte[]>? manifestTransform = null,
-        string? unlisted = null, bool symlink = false)
+        string? unlisted = null, bool symlink = false, bool includeEntryResource = true)
     {
+        var executable = System.Version.Parse(version) >= new System.Version(0, 2, 2)
+            ? PackageContent.CurrentExecutableName : PackageContent.LegacyExecutableName;
         var content = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["顺手工具箱.exe"] = "fixture-executable-" + version,
+            [executable] = "fixture-executable-" + version,
             ["Shunshou.App.dll"] = "fixture-app-" + version,
             ["Shunshou.Core.dll"] = "fixture-core-" + version,
             ["tools/ocr/model.onnx"] = "fixture-stable-model"
         };
+        if (includeEntryResource) content.Add(System.IO.Path.ChangeExtension(executable, ".pri"), "fixture-pri-" + version);
         if (extra is not null) foreach (var pair in extra) content.Add(pair.Key, pair.Value);
         var files = content.Select(kv => new PackageFile(kv.Key, Encoding.UTF8.GetByteCount(kv.Value), Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(kv.Value))))).ToList();
         var manifest = new PackageManifest("顺手工具箱", version, "win-x64", files);

@@ -15,6 +15,8 @@ public static class ImageTests
         var service = new ImageService();
         var outputs = await service.ConvertAsync([source], root, "webp", 160, 90, null, default);
         CompressionTests.Check(outputs.Count == 1 && File.Exists(outputs[0]), "image conversion returns a real output");
+        CompressionTests.Check(Path.GetFileName(Path.GetDirectoryName(outputs[0])!).StartsWith("Images_", StringComparison.Ordinal)
+            && Path.GetFileName(outputs[0]) == "001_透明原图.webp", "generated image folder is English while the original Chinese name is retained");
         using (var output = new MagickImage(outputs[0]))
         {
             CompressionTests.Check(output.Width == 160 && output.Height == 100, "resize retains aspect ratio");
@@ -40,6 +42,8 @@ public static class ImageTests
         var gifHash = CompressionTests.HashFile(gif);
         var frameOutputs = await service.ConvertAsync([gif], root, "png", null, 90, null, default);
         CompressionTests.Check(frameOutputs.Count == 2, "multi-frame input produces every frame instead of dropping frames");
+        CompressionTests.Check(Path.GetFileName(frameOutputs[0]) == "001_two-frames_frame001.png"
+            && Path.GetFileName(frameOutputs[1]) == "001_two-frames_frame002.png", "generated frame suffixes use English and retain order");
         using (var first = new MagickImage(frameOutputs[0]))
         using (var second = new MagickImage(frameOutputs[1]))
             CompressionTests.Check(!first.ToByteArray(MagickFormat.Rgb).SequenceEqual(second.ToByteArray(MagickFormat.Rgb)), "frames retain distinct content");

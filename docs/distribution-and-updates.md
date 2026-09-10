@@ -8,6 +8,8 @@
 
 默认路径使用系统盘当前用户的应用数据目录，不要求写入 Program Files，正常部署不请求管理员权限。需要放到其他盘时，可选择有写入权限的目录。
 
+0.2.2 起主入口为 `ShunshouToolbox.exe`，同名 `ShunshouToolbox.pri` 必须保留。安装默认目录为 `%LOCALAPPDATA%/Programs/ShunshouToolbox`，转换默认输出为 Windows 文档目录下的 `ShunshouToolbox/Output`。界面及桌面名称保留中文，已有用户目录不自动更名。带旧中文入口和有效清单的旧包仍可更新；已有自有快捷方式会指向新的英文入口。
+
 快捷方式只是软件入口，实际文件仍保存在选择的文件夹中。不要只保留快捷方式，或只从软件目录复制主 EXE。部署不会建立系统“已安装的应用”卸载项，也不注册自动运行或后台更新服务。
 
 ## 更新同一位置
@@ -45,15 +47,15 @@
 ## 构建与验证
 
 ```powershell
-pwsh ./scripts/Build-Portable.ps1 -Version 0.2.1
-pwsh ./scripts/Build-Setup.ps1 -Version 0.2.1
+pwsh ./scripts/Build-Portable.ps1 -Version 0.2.2
+pwsh ./scripts/Build-Setup.ps1 -Version 0.2.2
 
 # 使用指定的完整 ZIP 和新的输出目录，保留已有发布文件。
-pwsh ./scripts/Build-Setup.ps1 -Version 0.2.1 -PayloadZip ./dist/ShunshouToolbox-0.2.1-win-x64.zip -OutputRoot ./artifacts/setup-build
+pwsh ./scripts/Build-Setup.ps1 -Version 0.2.2 -PayloadZip ./dist/ShunshouToolbox-0.2.2-win-x64.zip -OutputRoot ./artifacts/setup-build
 ```
 
 `Build-Setup.ps1` 校对 ZIP 内包清单的产品、版本和体系结构，计算嵌入包的 SHA256，并在发布期间保持只读文件句柄。构建使用自带 .NET 的单文件发布，包含本地运行库，关闭裁剪并压缩单文件。构建脚本不会自动部署软件或写桌面；最终 EXE 另生成 SHA256 文件。已有同名 EXE 或哈希文件时拒绝覆盖。
 
-部署与桌面集成测试在独立生成目录中进行，不改用户实际桌面，也不更新现有软件目录。正式发布还需要用最终 EXE 验证全新部署、从上一 ZIP 版本升级、运行中阻止更新、取消、故障恢复、数据哈希以及解压后程序启动。测试报告应区分模拟故障、真实包验证及尚未在干净电脑验证的环境；当前证据见 [0.2.1 测试报告](validation-0.2.1.md)。
+部署与桌面集成测试在独立生成目录中进行，不改用户实际桌面，也不更新现有软件目录。正式发布还需要用最终 EXE 验证全新部署、从上一 ZIP 版本升级、运行中阻止更新、取消、故障恢复、数据哈希以及解压后程序启动。测试报告应区分模拟故障、真实包验证及尚未在干净电脑验证的环境；当前证据见 [0.2.2 测试报告](validation-0.2.2.md)及 [0.2.1 测试报告](validation-0.2.1.md)。
 
 本版自解压 EXE 未提供代码签名，仍可能触发 Windows 对新发布可执行文件的提示。更换 EXE 包装不等于差分更新：目前每次下载仍携带完整工具、OCR 模型和转换运行库。在线自动更新、组件增量包、差分包与代码签名是后续独立工作。
