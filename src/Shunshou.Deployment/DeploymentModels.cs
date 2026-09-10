@@ -23,9 +23,9 @@ internal enum DeploymentCheckpoint { Prepared, OldRenamedBeforeJournal, OldMoved
 internal sealed record PackageFile(string Path, long Bytes, string Sha256);
 internal sealed record PackageManifest(string Product, string Version, string Architecture, List<PackageFile> Files);
 internal sealed record FileSnapshot(string Path, long Bytes, string Sha256, DateTime LastWriteUtc, FileAttributes Attributes,
-    string? ZoneIdentifierSha256 = null, long ZoneIdentifierBytes = 0);
-internal sealed record DirectorySnapshot(string Path, DateTime LastWriteUtc, FileAttributes Attributes);
-internal sealed record TreeSnapshot(List<FileSnapshot> Files, List<DirectorySnapshot> Directories);
+    string? ZoneIdentifierSha256 = null, long ZoneIdentifierBytes = 0, string? AccessSddl = null);
+internal sealed record DirectorySnapshot(string Path, DateTime LastWriteUtc, FileAttributes Attributes, string? AccessSddl = null);
+internal sealed record TreeSnapshot(List<FileSnapshot> Files, List<DirectorySnapshot> Directories, string? RootAccessSddl = null);
 
 internal sealed class DeploymentJournal
 {

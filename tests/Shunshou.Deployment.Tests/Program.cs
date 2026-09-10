@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Reflection;
 using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -264,33 +265,75 @@ await Run("directory junction in source and linked target ancestors are refused"
     await Refuses(() => new DeploymentService().InstallOrUpdateAsync(f.Package("0.2.1").Request(Path.Combine(junction, "new-app"))));
     Check(File.ReadAllText(Path.Combine(outside, "user.txt")) == "outside-data" && await f.Version(f.Target) == "0.2.0", "Junction targets untouched.");
 });
-await Run("custom file directory and root access permissions conservatively refuse", async f =>
+await Run("custom restrictive root protected subtree and per-file access permissions survive update", async f =>
 {
-    foreach (var kind in new[] { "file", "directory", "root" })
-    {
-        var sub = new Fixture(Path.Combine(f.Root, kind));
-        await sub.Install("0.2.0");
-        var user = sub.WriteUser("data/user.txt", "permission-sensitive");
-        FileSystemInfo item = kind switch
-        {
-            "file" => new FileInfo(user), "directory" => new DirectoryInfo(Path.GetDirectoryName(user)!), _ => new DirectoryInfo(sub.Target)
-        };
-        if (item is FileInfo file)
-        {
-            var security = file.GetAccessControl(AccessControlSections.Access);
-            security.SetAccessRuleProtection(isProtected: true, preserveInheritance: true);
-            file.SetAccessControl(security);
-        }
-        else
-        {
-            var directory = (DirectoryInfo)item;
-            var security = directory.GetAccessControl(AccessControlSections.Access);
-            security.SetAccessRuleProtection(isProtected: true, preserveInheritance: true);
-            directory.SetAccessControl(security);
-        }
-        await Refuses(() => new DeploymentService().InstallOrUpdateAsync(sub.Package("0.2.1").Request(sub.Target)));
-        Check(await sub.Version(sub.Target) == "0.2.0" && File.ReadAllText(user) == "permission-sensitive", "Custom ACL must not be replaced.");
-    }
+    await f.Install("0.2.0");
+    var user = f.WriteUser("data/protected/user.txt", "permission-sensitive");
+    var customFile = f.WriteUser("data/custom-file.txt", "custom-file-content");
+    var sid = WindowsIdentity.GetCurrent().User!;
+    var rootSecurity = new DirectorySecurity();
+    rootSecurity.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+    rootSecurity.AddAccessRule(new FileSystemAccessRule(sid, FileSystemRights.FullControl,
+        InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
+    new DirectoryInfo(f.Target).SetAccessControl(rootSecurity);
+    var protectedDirectory = Path.GetDirectoryName(user)!;
+    var protectedSecurity = new DirectorySecurity();
+    protectedSecurity.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+    protectedSecurity.AddAccessRule(new FileSystemAccessRule(sid, FileSystemRights.FullControl,
+        InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
+    new DirectoryInfo(protectedDirectory).SetAccessControl(protectedSecurity);
+    var fileSecurity = new FileSecurity();
+    fileSecurity.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+    fileSecurity.AddAccessRule(new FileSystemAccessRule(sid, FileSystemRights.FullControl, AccessControlType.Allow));
+    new FileInfo(customFile).SetAccessControl(fileSecurity);
+    var before = await FileTrees.CaptureAsync(f.Target, default);
+    var result = await new DeploymentService().InstallOrUpdateAsync(f.Package("0.2.1").Request(f.Target));
+    var after = await FileTrees.CaptureAsync(f.Target, default);
+    Check(before.RootAccessSddl == after.RootAccessSddl, "Root DACL and protection must be identical.");
+    foreach (var directory in before.Directories)
+        Check(directory.AccessSddl == after.Directories.Single(d => d.Path == directory.Path).AccessSddl, "Original directory permissions unchanged: " + directory.Path);
+    foreach (var file in before.Files.Where(file => file.Path.StartsWith("data/")))
+        Check(file.AccessSddl == after.Files.Single(d => d.Path == file.Path).AccessSddl, "User file permissions unchanged: " + file.Path);
+    FileTrees.Equal(before, await FileTrees.CaptureAsync(result.PreviousBackupDirectory!, default));
+    var newRules = new FileInfo(Path.Combine(f.Target, "顺手工具箱.exe")).GetAccessControl(AccessControlSections.Access)
+        .GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>().ToList();
+    Check(newRules.Count > 0 && newRules.All(rule => rule.IdentityReference == sid && rule.IsInherited), "New managed files inherit restricted original root policy.");
+    Check(File.ReadAllText(user) == "permission-sensitive" && File.ReadAllText(customFile) == "custom-file-content", "Restricted user content preserved.");
+});
+await Run("fresh child with legitimate explicit default DACL supports initial install and update", async f =>
+{
+    var security = new DirectorySecurity();
+    security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+    security.AddAccessRule(new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.FullControl,
+        InheritanceFlags.None, PropagationFlags.None, AccessControlType.Allow));
+    new DirectoryInfo(f.Root).SetAccessControl(security);
+    var child = Path.Combine(f.Root, "default-child");
+    Directory.CreateDirectory(child);
+    var childSecurity = new DirectoryInfo(child).GetAccessControl(AccessControlSections.Access);
+    var rules = childSecurity.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>().ToList();
+    Check(!childSecurity.AreAccessRulesProtected && rules.Any(rule => !rule.IsInherited), "Fixture must reproduce normal new child explicit ACEs.");
+    await f.Install("0.2.0");
+    f.WriteUser("data/user.txt", "default-dacl-user-content");
+    var before = await FileTrees.CaptureAsync(f.Target, default);
+    var result = await new DeploymentService().InstallOrUpdateAsync(f.Package("0.2.1").Request(f.Target));
+    Check(AccessPermissions.Equivalent(before.RootAccessSddl, AccessPermissions.Read(f.Target, true)), "Default root DACL preserved.");
+    FileTrees.Equal(before, await FileTrees.CaptureAsync(result.PreviousBackupDirectory!, default));
+    Check(await f.Version(f.Target) == "0.2.1" && File.ReadAllText(Path.Combine(f.Target, "data/user.txt")) == "default-dacl-user-content", "Default explicit ACL deployment succeeds.");
+});
+await Run("legacy journal without DACL fields recovers folders without changing permissions", async f =>
+{
+    await f.Install("0.2.0");
+    f.WriteUser("data/legacy.txt", "legacy-data");
+    var before = await FileTrees.CaptureAsync(f.Target, default);
+    await Crash(f.Package("0.2.1"), f.Target, DeploymentCheckpoint.OldRenamedBeforeJournal);
+    var journal = f.Journal();
+    static TreeSnapshot Legacy(TreeSnapshot tree) => new(tree.Files.Select(file => file with { AccessSddl = null }).ToList(),
+        tree.Directories.Select(dir => dir with { AccessSddl = null }).ToList());
+    journal.OldTree = Legacy(journal.OldTree!);
+    journal.NewTree = Legacy(journal.NewTree!);
+    File.WriteAllBytes(PathSafety.JournalPath(f.Target), JsonSerializer.SerializeToUtf8Bytes(journal));
+    Check((await new DeploymentService().RecoverAsync(f.Target)).Recovered, "Legacy recovery should succeed.");
+    FileTrees.Equal(before, await FileTrees.CaptureAsync(f.Target, default));
 });
 await Run("oversized journal is refused by writer before it can become unrecoverable", f =>
 {

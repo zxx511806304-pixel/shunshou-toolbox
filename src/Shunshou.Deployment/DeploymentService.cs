@@ -49,6 +49,7 @@ public sealed class DeploymentService
         Directory.CreateDirectory(journal.Stage);
         try
         {
+            FileTrees.PreparePermissions(journal.Stage, source.Tree, ct);
             await package.ExtractAsync(journal.Stage, progress, ct);
             await FileTrees.CopyPreservedAsync(target, journal.Stage, source.Preserved, progress, ct);
             progress?.Report(new("正在核对新版和保留文件…", 75));
@@ -198,7 +199,7 @@ public sealed class DeploymentService
         }
         var managed = old?.Files.Select(f => f.Path).ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
         managed.Add(PathSafety.ManifestName);
-        var preserved = new TreeSnapshot(tree.Files.Where(f => !managed.Contains(f.Path)).ToList(), tree.Directories);
+        var preserved = new TreeSnapshot(tree.Files.Where(f => !managed.Contains(f.Path)).ToList(), tree.Directories, tree.RootAccessSddl);
         var preservedBytes = preserved.Files.Sum(f => f.Bytes);
         if (preservedBytes > PathSafety.MaxUserBytes) throw new IOException("需要保留的数据超过 20 GB，请先单独备份后更新。");
         foreach (var file in preserved.Files)
@@ -215,7 +216,7 @@ public sealed class DeploymentService
     {
         var files = expected.Files.Select(f => f.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var dirs = expected.Directories.Select(d => d.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        FileTrees.Equal(expected, new(actual.Files.Where(f => files.Contains(f.Path)).ToList(), actual.Directories.Where(d => dirs.Contains(d.Path)).ToList()));
+        FileTrees.Equal(expected, new(actual.Files.Where(f => files.Contains(f.Path)).ToList(), actual.Directories.Where(d => dirs.Contains(d.Path)).ToList(), actual.RootAccessSddl));
     }
 
     private static async Task VerifyOldAsync(DeploymentJournal journal, CancellationToken ct)

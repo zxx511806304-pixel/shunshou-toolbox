@@ -10,13 +10,13 @@
 
 | 范围 | 结果 | 本地证据 |
 | --- | --- | --- |
-| 部署核心 | 21 项通过，0 项失败 | `artifacts/deployment/deployment-verification.json` |
+| 部署核心及权限兼容修复 | 23 项通过，0 项失败 | `artifacts/deployment-acl-fix/deployment-verification.json` |
 | 桌面集成 | 7 组检查通过；真实桌面与注册表写入均为 0 | `artifacts/desktop-integration-final/20260910-073957-f82b9e33/verification.json` |
 | 初次自解压候选 EXE | 内嵌 ZIP 校验、全新部署、从 0.2.0 完整 ZIP 升级通过 | `artifacts/setup-v021-first/setup-verification.json` |
 | 0.2.1 便携候选包 WinUI | `Passed: true`，原有工作区回归通过 | `artifacts/portable-v021/ui/ui-verification.json` |
-| 最终 EXE | 完整负载校验、首次解压、0.2.0 升级和保留备份通过 | `artifacts/setup-v021-release/setup-verification.json` |
-| 最终 EXE 实际界面 | 生产部署流程、夹具快捷方式、完成控件与进度状态通过 | `artifacts/setup-v021-release-ui/setup-ui-verification.json` |
-| 最终 ZIP 负载的离线引擎 | OCR、图像、PDF/Open XML、ZIP、FFmpeg 通过 | `artifacts/setup-v021-launched/engines/package-verification.json` |
+| 最终 EXE | 完整负载校验、首次解压、0.2.0 升级和保留备份通过 | `artifacts/setup-v021-acl-release/setup-verification.json` |
+| 最终 EXE 实际界面 | 生产部署流程、夹具快捷方式、完成控件与进度状态通过 | `artifacts/setup-v021-acl-release-ui/setup-ui-verification.json` |
+| 最终解压目录的离线引擎 | OCR、图像、PDF/Open XML、ZIP、FFmpeg 通过 | `artifacts/setup-v021-acl-launched/engines/package-verification.json` |
 
 证据路径相对于仓库根目录；`artifacts` 属于本机验证输出，不随 Git 源码提交。
 
@@ -30,7 +30,8 @@
 - 已下载托管文件上的 `Zone.Identifier` 不阻止更新；用户文件的该标记复制后保持一致，其他附加数据流保守拒绝。
 - 切换前取消、提交前文件变化和切换失败不会覆盖原始内容；进入目录切换阶段后，取消不会打断完成或回滚。
 - 子进程在旧目录改名后崩溃，可恢复旧目录且不删除暂存内容；在新版激活后崩溃，可确认新版并保留旧备份。激活后新增或修改的用户数据不会被回退覆盖。
-- 恢复路径篡改、备份被修改、目录联接、自定义文件/目录/根目录权限均保守拒绝；写日志与读日志共用体积上限，拒绝生成无法读取的超限日志。
+- 恢复路径篡改、备份被修改、目录联接均保守拒绝；写日志与读日志共用体积上限，拒绝生成无法读取的超限日志。
+- 受限根目录、受保护子目录和用户文件的 DACL 保持一致，新版程序文件继承目录策略。正常新目录带有显式默认权限的场景可完成首次解压及更新；不含 DACL 字段的旧恢复记录可以恢复已有目录而不改写权限。
 
 崩溃验证是受控子进程终止与检查点故障注入，不等同于物理断电或损坏磁盘验证。
 
@@ -50,11 +51,13 @@ WinUI 回归在 0.2.1 便携候选目录内启动真实应用，验证输入队�
 
 最终 EXE 的嵌入负载、首次解压和 0.2.0 升级均通过，逐文件核对新版清单与保留数据哈希。实际解压窗口在独立目录执行生产流程，完成后创建夹具快捷方式、保存夹具位置记录并恢复按钮状态；已检查生成的界面截图。修正了完成后的迟到进度回调，完成状态保持 100%。
 
-同一个最终 ZIP 负载解压后的中文 EXE 已启动并完成离线引擎验证。引擎测试早于最后一次只涉及自解压界面进度回调的修改，ZIP SHA256 完全相同。包中随附的报告是构建时快照，本仓库此报告补全了打包之后的验证结果。
+修正权限处理后的最终 EXE 已重新执行首次解压、0.2.0 升级及真实界面验证，其实际解压目录中的中文 EXE 已完成离线引擎验证。ZIP 负载未改变。包中随附的报告是构建时快照，本仓库此报告补全了打包之后的验证结果。
+
+首次 GitHub Actions 检查中，编译和完整转换测试通过，部署测试暴露 Windows Server 2025 默认权限标记与本机不同的问题。已在本机复现并改为捕获、恢复、核对 DACL，避免按“是否显式权限”误拒绝正常目录；23 项本地测试以及修正版真实 EXE 均通过。远端复验结果以此仓库 Actions 记录为准。
 
 | 文件 | SHA256 |
 | --- | --- |
 | `ShunshouToolbox-0.2.1-win-x64.zip` | `c6f7bbf2a23fed044df49947e2ae6fe3cf92c75e0f937aef5888a708bf6cae6f` |
-| `ShunshouToolbox-0.2.1-win-x64-setup.exe` | `46b985f92f4f1187f19199b67b919f0d7a1a0196e3998b72ea3fa745ae5c4789` |
+| `ShunshouToolbox-0.2.1-win-x64-setup.exe` | `8c564a2d55a6e9d0b8daf06006e35cdd3cb2413e06a6800c382b0d570842bac2` |
 
 尚未完成的环境验证包括：干净 Windows 10/11 电脑、不同 DPI 与高对比度组合、真实下载后的 SmartScreen 交互、物理断电。EXE 未提供代码签名；本版提供完整离线包，不包含在线自动更新或差分包。

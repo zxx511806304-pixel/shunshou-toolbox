@@ -1,7 +1,5 @@
 using System.Runtime.InteropServices;
-using System.Security.AccessControl;
 using System.Security.Cryptography;
-using System.Security.Principal;
 using System.Text;
 
 namespace Shunshou.Deployment;
@@ -75,15 +73,6 @@ internal static class PathSafety
     {
         NoLinks(path);
         var attributes = File.GetAttributes(path);
-        if (OperatingSystem.IsWindows())
-        {
-            FileSystemSecurity security = (attributes & FileAttributes.Directory) != 0
-                ? new DirectoryInfo(path).GetAccessControl(AccessControlSections.Access)
-                : new FileInfo(path).GetAccessControl(AccessControlSections.Access);
-            var rules = security.GetAccessRules(includeExplicit: true, includeInherited: true, typeof(SecurityIdentifier));
-            if (security.AreAccessRulesProtected || rules.Count == 0 || rules.Cast<FileSystemAccessRule>().Any(rule => !rule.IsInherited))
-                throw new IOException("目录或文件使用了自定义访问权限，暂不自动更新，以免改变权限：" + path);
-        }
         if ((attributes & (FileAttributes.Encrypted | FileAttributes.Offline | FileAttributes.Device)) != 0)
             throw new IOException("文件具有暂不支持安全复制的属性，请先另存为普通本地文件：" + path);
         // Copying only the default stream would silently discard user metadata. Refuse instead.

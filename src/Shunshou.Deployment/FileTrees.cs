@@ -7,6 +7,7 @@ internal static class FileTrees
     internal static async Task<TreeSnapshot> CaptureAsync(string root, CancellationToken ct)
     {
         PathSafety.NoLinks(root);
+        var rootAccess = AccessPermissions.Read(root, directory: true);
         var files = new List<FileSnapshot>();
         var directories = new List<DirectorySnapshot>();
         var pending = new Stack<string>();
@@ -26,7 +27,7 @@ internal static class FileTrees
                 var attributes = File.GetAttributes(entry);
                 if ((attributes & FileAttributes.Directory) != 0)
                 {
-                    directories.Add(new(relative, Directory.GetLastWriteTimeUtc(entry), attributes));
+                    directories.Add(new(relative, Directory.GetLastWriteTimeUtc(entry), attributes, AccessPermissions.Read(entry, directory: true)));
                     pending.Push(entry);
                 }
                 else
@@ -42,12 +43,12 @@ internal static class FileTrees
                     info.Refresh();
                     if (length != info.Length || modified != info.LastWriteTimeUtc || attributes != info.Attributes)
                         throw new IOException("文件正在变化，请关闭相关软件再更新：" + relative);
-                    files.Add(new(relative, length, hash, modified, attributes, zone.Hash, zone.Bytes));
+                    files.Add(new(relative, length, hash, modified, attributes, zone.Hash, zone.Bytes, AccessPermissions.Read(entry, directory: false)));
                 }
             }
         }
         return new(files.OrderBy(f => f.Path, StringComparer.OrdinalIgnoreCase).ToList(),
-            directories.OrderBy(d => d.Path, StringComparer.OrdinalIgnoreCase).ToList());
+            directories.OrderBy(d => d.Path, StringComparer.OrdinalIgnoreCase).ToList(), rootAccess);
     }
 
     internal static void ValidateSnapshot(TreeSnapshot? snapshot)
@@ -55,12 +56,14 @@ internal static class FileTrees
         if (snapshot?.Files is null || snapshot.Directories is null
             || snapshot.Files.Count + snapshot.Directories.Count > PathSafety.MaxEntries)
             throw new InvalidDataException("更新恢复记录不完整。");
+        AccessPermissions.Validate(snapshot.RootAccessSddl);
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         long bytes = 0;
         foreach (var file in snapshot.Files)
         {
             if (file is null) throw new InvalidDataException("更新恢复记录无效。");
             PathSafety.Relative(file.Path);
+            AccessPermissions.Validate(file.AccessSddl);
             if (!paths.Add(file.Path) || file.Bytes < 0 || !PathSafety.IsHash(file.Sha256)
                 || (file.Attributes & (FileAttributes.ReparsePoint | FileAttributes.Directory)) != 0
                 || file.ZoneIdentifierBytes is < 0 or > 65536
@@ -74,6 +77,7 @@ internal static class FileTrees
         {
             if (dir is null) throw new InvalidDataException("更新恢复记录无效。");
             PathSafety.Relative(dir.Path);
+            AccessPermissions.Validate(dir.AccessSddl);
             if (!paths.Add(dir.Path) || (dir.Attributes & FileAttributes.ReparsePoint) != 0)
                 throw new InvalidDataException("更新恢复目录记录无效。");
         }
@@ -81,7 +85,8 @@ internal static class FileTrees
 
     internal static void Equal(TreeSnapshot expected, TreeSnapshot actual)
     {
-        if (expected.Files.Count != actual.Files.Count || expected.Directories.Count != actual.Directories.Count)
+        if (expected.Files.Count != actual.Files.Count || expected.Directories.Count != actual.Directories.Count
+            || !AccessPermissions.Equivalent(expected.RootAccessSddl, actual.RootAccessSddl))
             throw new IOException("软件目录在更新期间发生变化，已停止自动切换。");
         var actualFiles = actual.Files.ToDictionary(f => f.Path, StringComparer.OrdinalIgnoreCase);
         foreach (var file in expected.Files)
@@ -89,14 +94,15 @@ internal static class FileTrees
             if (!actualFiles.TryGetValue(file.Path, out var found) || file.Bytes != found.Bytes
                 || !PathSafety.HashEquals(file.Sha256, found.Sha256) || file.LastWriteUtc != found.LastWriteUtc || file.Attributes != found.Attributes
                 || !string.Equals(file.ZoneIdentifierSha256, found.ZoneIdentifierSha256, StringComparison.OrdinalIgnoreCase)
-                || file.ZoneIdentifierBytes != found.ZoneIdentifierBytes)
+                || file.ZoneIdentifierBytes != found.ZoneIdentifierBytes || !AccessPermissions.Equivalent(file.AccessSddl, found.AccessSddl))
                 throw new IOException("文件在更新期间发生变化，已停止自动切换：" + file.Path);
         }
         var actualDirectories = actual.Directories.ToDictionary(d => d.Path, StringComparer.OrdinalIgnoreCase);
         foreach (var directory in expected.Directories)
         {
             // Directory timestamps can change due to filesystem bookkeeping; contents and attributes are authoritative.
-            if (!actualDirectories.TryGetValue(directory.Path, out var found) || directory.Attributes != found.Attributes)
+            if (!actualDirectories.TryGetValue(directory.Path, out var found) || directory.Attributes != found.Attributes
+                || !AccessPermissions.Equivalent(directory.AccessSddl, found.AccessSddl))
                 throw new IOException("目录在更新期间发生变化：" + directory.Path);
         }
     }
@@ -142,6 +148,8 @@ internal static class FileTrees
             await using (var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 131072, FileOptions.Asynchronous))
             await using (var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None, 131072, FileOptions.Asynchronous))
             {
+                // Set the DACL while the new file is still empty, before writing sensitive user bytes.
+                AccessPermissions.Apply(destination, directory: false, file.AccessSddl);
                 await input.CopyToAsync(output, ct);
                 output.Flush(flushToDisk: true);
             }
@@ -162,6 +170,20 @@ internal static class FileTrees
             var path = PathSafety.Under(stage, directory.Path);
             Directory.SetLastWriteTimeUtc(path, directory.LastWriteUtc);
             File.SetAttributes(path, directory.Attributes);
+        }
+    }
+
+    internal static void PreparePermissions(string stage, TreeSnapshot source, CancellationToken ct)
+    {
+        AccessPermissions.Apply(stage, directory: true, source.RootAccessSddl);
+        foreach (var directory in source.Directories.OrderBy(d => d.Path.Count(c => c == '/')))
+        {
+            ct.ThrowIfCancellationRequested();
+            var path = PathSafety.Under(stage, directory.Path);
+            PathSafety.NoLinks(path);
+            Directory.CreateDirectory(path);
+            // Parents are applied before child creation, preventing broad temporary inheritance.
+            AccessPermissions.Apply(path, directory: true, directory.AccessSddl);
         }
     }
 
