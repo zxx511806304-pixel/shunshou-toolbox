@@ -22,7 +22,6 @@ public sealed partial class MainWindow : Window
     private bool _busy;
     private string _category = "compression";
     private string? _lastOutputDirectory;
-    private IReadOnlyList<FileSearchResult> _searchItems = [];
     private static readonly Dictionary<string, string[]> Operations = new()
     {
         ["compression"] = ["按上传上限压缩", "无损 ZIP 打包", "ZIP 解压"],
@@ -51,9 +50,11 @@ public sealed partial class MainWindow : Window
             presenter.PreferredMinimumWidth = Math.Min((int)(940 * scale), windowWidth);
         OutputDirectory.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "顺手工具箱输出");
         _ready = true;
+        InitializeSearch();
+        InitializeFileDrop();
         Navigation.SelectedItem = Navigation.MenuItems[0];
         SelectCategory("compression");
-        Closed += (_, _) => _cancellation?.Cancel();
+        Closed += (_, _) => { _cancellation?.Cancel(); DisposeSearch(); };
     }
 
     private string Operation => OperationBox.SelectedItem as string ?? Operations[_category][0];
@@ -106,7 +107,9 @@ public sealed partial class MainWindow : Window
         SetVisible(ImageQuality, imageConvert);
         SetVisible(AdvancedPanel, imageConvert);
         SetVisible(PdfPanel, pdfImages);
-        SetVisible(SearchPanel, op == "按名称搜索");
+        SetVisible(SearchWorkspace, op == "按名称搜索");
+        SetVisible(WorkspaceScroll, op != "按名称搜索");
+        ResetSearchView();
         SetVisible(RenamePanel, op == "批量重命名");
         SetVisible(OutputPanel, op is not "按名称搜索" and not "批量重命名" and not "撤销重命名");
         SetVisible(AddFolderButton, _category == "compression" || op == "按名称搜索");
@@ -119,28 +122,24 @@ public sealed partial class MainWindow : Window
         {
             "按上传上限压缩" => ("拖入 ZIP 压缩包或图片文件夹", "优化 JPG、PNG、WebP，其他文件保留原样", "输入上传上限，调整包内图片，再核验整个压缩包的大小。"),
             "无损 ZIP 打包" => ("拖入文件或文件夹", "打包为 ZIP，完整保留文件内容", "无损打包适合整理传输，已经压缩过的图片和视频通常难以再次大幅缩小。"),
-            "ZIP 解压" => ("拖入一个 ZIP 压缩包", "解压到新的文件夹，保留原压缩包", "展开压缩包，恢复目录与文件。预览版支持 ZIP。"),
+            "ZIP 解压" => ("拖入一个 ZIP 压缩包", "解压到新的文件夹，保留原压缩包", "展开 ZIP 压缩包，恢复目录与文件。"),
             "截图提取文字" => ("拖入一张截图或图片", "识别印刷文字，可复制或保存为文本", "使用内置中英文模型识别截图，不上传图片。"),
-            "按名称搜索" => ("选择要搜索的文件夹", "在所选文件夹及子文件夹内查找", "按名称查找图片、文件和文件夹，双击结果即可打开。"),
+            "按名称搜索" => ("拖入文件或文件夹", "拖入文件夹可快速设置搜索范围", "按名称搜索本机磁盘，选择结果预览，双击打开。"),
             "批量重命名" => ("拖入一批需要整理的文件", "执行前预览新名称，保留文件扩展名", "按前缀和递增序号统一命名，生成可供恢复的记录。"),
             "撤销重命名" => ("选择此前生成的重命名记录", "选择 rename-history 文件夹里的 JSON 记录", "根据本地记录恢复原文件名。文件内容或位置变化时会停止恢复。"),
             "图片格式转换" => ("拖入一张或多张图片", "支持批量转换；多帧图片逐帧导出", "转为常用图片格式，可按需调整尺寸与编码质量。"),
             "合并 PDF" => ("按顺序选择多份 PDF", "合并顺序与添加顺序相同", "把多份材料合成一个 PDF，生成新文件。"),
             _ when _category == "pdf" => ("拖入一份 PDF 文档", "处理后保存为新文件，原 PDF 保留", "本地处理 PDF 页面，选择适合后续使用的输出方式。"),
-            _ => ("拖入一个音频或视频文件", "转换为新文件，源文件保留", "支持常见音视频格式转换；具体输入取决于内置引擎。")
+            _ => ("拖入一个音频或视频文件", "转换为新文件，源文件保留", "转换常用音视频格式，或按提交要求调整大小。")
         };
         if (op is "PDF 转可编辑 Word" or "PDF 转可编辑 PPT")
-            Note("以可编辑文字为主", "优先提取已有文字，扫描页面自动识别中英文。复杂版式、表格和图表不会完整还原，请检查提取后的文字。");
-        else if (op == "截图提取文字")
-            Note("内置中英文文字识别", "无需联网或安装语言包。日常截图效果较好；手写、公式和复杂表格需要人工检查。仅在内置模型缺失时尝试 Windows 识别组件。");
-        else if (op == "按名称搜索")
-            Note("搜索所选文件夹", "这是文件夹内的名称搜索，不是 Everything 式全盘索引。大型目录需要一些时间，可随时取消。");
+            Note("提取可编辑文字", "文档中的文字按阅读顺序生成段落，扫描页面自动识别中英文。");
         else if (media)
             Note("转换与质量", "转为 MP3、MP4、M4A 通常会损失质量；FLAC 可保存解码后的无损音频。目标大小过小时，工具会提示无法达标。");
         RunButton.Content = op == "按名称搜索" ? "开始搜索" : op == "批量重命名" ? "预览重命名" : "开始处理";
         StatusInfo.IsOpen = false;
         ResultPanel.Visibility = Visibility.Collapsed;
-        SearchResults.Visibility = Visibility.Collapsed;
+        SetVisible(OpenOutputButton, op != "按名称搜索");
         TaskProgress.Value = 0;
         ProgressText.Text = "准备就绪 · 文件只在你的电脑处理";
         WorkspaceScroll.ChangeView(null, 0, null, true);
@@ -155,7 +154,7 @@ public sealed partial class MainWindow : Window
 
     private static void SetVisible(UIElement element, bool visible) => element.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
 
-    private bool AllowsMultiple => Operation is "合并 PDF" or "图片格式转换" or "批量重命名";
+    private bool AllowsMultiple => InputSelectionPolicy.AllowsMultiple(CurrentInputTool);
 
     private async void AddFiles_Click(object sender, RoutedEventArgs args)
     {
@@ -178,15 +177,7 @@ public sealed partial class MainWindow : Window
         catch (Exception ex) { ShowError(ex.Message); }
     }
 
-    private string[] FileFilters() => _category switch
-    {
-        "pdf" => [".pdf"],
-        "image" => [".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff", ".gif"],
-        "media" => ["*"],
-        "compression" when Operation != "无损 ZIP 打包" => [".zip"],
-        "files" when Operation == "撤销重命名" => [".json"],
-        _ => ["*"]
-    };
+    private string[] FileFilters() => InputSelectionPolicy.FileFilters(CurrentInputTool);
 
     private async Task<string?> PickFolder()
     {
@@ -208,17 +199,7 @@ public sealed partial class MainWindow : Window
         catch (Exception ex) { ShowError(ex.Message); }
     }
 
-    private void AddInputs(IEnumerable<string> paths)
-    {
-        if (_busy) return;
-        if (!AllowsMultiple) _inputs.Clear();
-        foreach (var path in paths)
-        {
-            if (!_inputs.Contains(path, StringComparer.OrdinalIgnoreCase)) _inputs.Add(path);
-            if (!AllowsMultiple) break;
-        }
-        UpdateSelection();
-    }
+    private void AddInputs(IEnumerable<string> paths) => AcceptInputPaths(paths);
 
     private void UpdateSelection() => SelectionSummary.Text = _inputs.Count == 0
         ? "还没有添加文件"
@@ -226,23 +207,12 @@ public sealed partial class MainWindow : Window
 
     private void Clear_Click(object sender, RoutedEventArgs args) { _inputs.Clear(); UpdateSelection(); }
 
-    private void Input_DragOver(object sender, DragEventArgs args)
-    {
-        args.AcceptedOperation = !_busy && args.DataView.Contains(StandardDataFormats.StorageItems) ? DataPackageOperation.Copy : DataPackageOperation.None;
-    }
-
-    private async void Input_Drop(object sender, DragEventArgs args)
-    {
-        if (_busy || !args.DataView.Contains(StandardDataFormats.StorageItems)) return;
-        try { AddInputs((await args.DataView.GetStorageItemsAsync()).Select(item => item.Path)); }
-        catch (Exception ex) { ShowError(ex.Message); }
-    }
-
-    private sealed record UiResult(string Message, string? OutputDirectory = null, bool Warning = false, IReadOnlyList<FileSearchResult>? Search = null);
+    private sealed record UiResult(string Message, string? OutputDirectory = null, bool Warning = false);
 
     private async void Run_Click(object sender, RoutedEventArgs args)
     {
         if (_busy) return;
+        if (Operation == "按名称搜索") { await RunSearchAsync(); return; }
         if (_inputs.Count == 0) { ShowError("请先添加要处理的文件或文件夹。"); return; }
         string op = Operation;
         string[] inputs = _inputs.ToArray();
@@ -268,7 +238,6 @@ public sealed partial class MainWindow : Window
         StatusInfo.IsOpen = false;
         ResultPanel.Visibility = Visibility.Collapsed;
         OpenOutputButton.IsEnabled = false;
-        SearchResults.Visibility = Visibility.Collapsed;
         TaskProgress.Value = 0;
         IProgress<ToolProgress> progress = new Progress<ToolProgress>(report =>
         {
@@ -330,9 +299,6 @@ public sealed partial class MainWindow : Window
                     case "音视频格式转换":
                     case "按目标大小压缩":
                         return Saved(await new MediaService().ConvertAsync(inputs[0], output, format, op == "按目标大小压缩" ? maxBytes : null, progress, token));
-                    case "按名称搜索":
-                        var files = await new FileService().SearchAsync(inputs[0], query, imagesOnly, progress, token);
-                        return new UiResult($"找到 {files.Count} 项。双击下方结果可打开。\n搜索范围：{inputs[0]}", inputs[0], false, files);
                     case "撤销重命名":
                         await new FileService().UndoRenameAsync(inputs[0], token);
                         return new UiResult("已根据记录恢复原文件名称。", Path.GetDirectoryName(inputs[0]));
@@ -358,12 +324,6 @@ public sealed partial class MainWindow : Window
         ResultPanel.Visibility = Visibility.Visible;
         _lastOutputDirectory = result.OutputDirectory;
         OpenOutputButton.IsEnabled = !string.IsNullOrWhiteSpace(_lastOutputDirectory);
-        if (result.Search != null)
-        {
-            _searchItems = result.Search;
-            SearchResults.ItemsSource = result.Search.Select(file => (file.IsDirectory ? "文件夹  " : "文件  ") + file.Name + "\n" + file.FullPath).ToArray();
-            SearchResults.Visibility = Visibility.Visible;
-        }
         ShowStatus(result.Warning ? "请检查处理结果" : "处理完成", result.Warning ? "部分要求未满足，请查看详情后再提交。" : "可打开输出文件夹查看文件。", result.Warning ? InfoBarSeverity.Warning : InfoBarSeverity.Success);
     }
 
@@ -378,6 +338,7 @@ public sealed partial class MainWindow : Window
         foreach (Control control in new Control[] { TargetSize, AllowLossy, AllowResize, FormatBox, ImageQuality, PdfDpi, SearchQuery, ImagesOnly, RenamePrefix, RenameStart, OutputDirectory, ImageWidth })
             control.IsEnabled = !busy;
         AllowResize.IsEnabled = !busy && AllowLossy.IsChecked == true;
+        SearchScopeBox.IsEnabled = ChooseSearchFolderButton.IsEnabled = !busy;
         CancelButton.IsEnabled = busy;
     }
 
@@ -393,15 +354,21 @@ public sealed partial class MainWindow : Window
     private void ShowStatus(string title, string message, InfoBarSeverity severity)
     {
         StatusInfo.Title = title; StatusInfo.Message = message; StatusInfo.Severity = severity; StatusInfo.IsOpen = true;
-        DispatcherQueue.TryEnqueue(() => { WorkspaceScroll.UpdateLayout(); WorkspaceScroll.ChangeView(null, WorkspaceScroll.ScrollableHeight, null); });
     }
     private void OpenOutput_Click(object sender, RoutedEventArgs args) { if (_lastOutputDirectory != null) OpenPath(_lastOutputDirectory); }
-    private void SearchResults_DoubleTapped(object sender, DoubleTappedRoutedEventArgs args) { int index = SearchResults.SelectedIndex; if (index >= 0 && index < _searchItems.Count) OpenPath(_searchItems[index].FullPath); }
     private void OpenPath(string path) { try { Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); } catch (Exception ex) { ShowError(ex.Message); } }
 
     private async void Root_Loaded(object sender, RoutedEventArgs args)
     {
         var commandArgs = Environment.GetCommandLineArgs();
+        int verifyIndex = Array.IndexOf(commandArgs, "--verify-ui");
+        if (verifyIndex >= 0)
+        {
+            if (verifyIndex + 2 >= commandArgs.Length) { Environment.Exit(2); return; }
+            int verified = await VerifyUiAsync(commandArgs[verifyIndex + 1], commandArgs[verifyIndex + 2]);
+            if (verified != 0) Environment.Exit(verified); else Application.Current.Exit();
+            return;
+        }
         int dirIndex = Array.IndexOf(commandArgs, "--screenshot-dir");
         int fileIndex = Array.IndexOf(commandArgs, "--screenshot");
         if (dirIndex < 0 && fileIndex < 0) return;

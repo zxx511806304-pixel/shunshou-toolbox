@@ -6,56 +6,33 @@ namespace Shunshou.Core;
 public sealed record FileSearchResult(string Name, string FullPath, bool IsDirectory, long Size);
 public sealed record RenameItem(string SourcePath, string TargetPath);
 
-/// <summary>Scope-limited filename search and reversible batch renaming. Never follows junctions.</summary>
-public sealed class FileService
+/// <summary>Local filename search and reversible batch renaming. Never follows junctions.</summary>
+public sealed partial class FileService
 {
     private readonly string _journalDirectory;
     public FileService(string? journalDirectory = null) => _journalDirectory = journalDirectory
         ?? Path.Combine(AppContext.BaseDirectory, "data", "rename-history");
-    private static readonly HashSet<string> Images = new(StringComparer.OrdinalIgnoreCase)
-        { ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".tif", ".tiff", ".heic", ".avif", ".svg" };
-
-    public Task<IReadOnlyList<FileSearchResult>> SearchAsync(string root, string query, bool imagesOnly,
-        IProgress<ToolProgress>? progress, CancellationToken ct) => Task.Run<IReadOnlyList<FileSearchResult>>(() =>
+    public async Task<IReadOnlyList<FileSearchResult>> SearchAsync(string root, string query, bool imagesOnly,
+        IProgress<ToolProgress>? progress, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         root = Path.GetFullPath(root);
         if (!Directory.Exists(root)) throw new DirectoryNotFoundException("请选择存在的搜索文件夹。");
-        if (string.IsNullOrWhiteSpace(query)) throw new ArgumentException("请输入文件名关键词。");
-        var result = new List<FileSearchResult>();
-        var pending = new Stack<string>(); pending.Push(root);
-        var visited = 0; var skipped = 0;
-        while (pending.TryPop(out var folder))
-        {
-            ct.ThrowIfCancellationRequested();
-            try
-            {
-                var entries = Directory.EnumerateFileSystemEntries(folder, "*", new EnumerationOptions
-                { IgnoreInaccessible = true, RecurseSubdirectories = false, AttributesToSkip = FileAttributes.ReparsePoint });
-                foreach (var path in entries)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    try
-                    {
-                        var attr = File.GetAttributes(path);
-                        if ((attr & FileAttributes.ReparsePoint) != 0) continue;
-                        var isDir = (attr & FileAttributes.Directory) != 0;
-                        if (isDir) pending.Push(path);
-                        var name = Path.GetFileName(path);
-                        if (name.Contains(query.Trim(), StringComparison.OrdinalIgnoreCase) &&
-                            (!imagesOnly || !isDir && Images.Contains(Path.GetExtension(path))))
-                            result.Add(new(name, path, isDir, isDir ? 0 : new FileInfo(path).Length));
-                        if (++visited % 300 == 0) progress?.Report(new(0, $"已扫描 {visited:N0} 项，找到 {result.Count:N0} 项"));
-                        if (result.Count >= 10000)
-                            throw new InvalidOperationException("匹配超过 10,000 项，请缩小搜索范围或输入更具体的名称。");
-                    }
-                    catch (Exception ex) when (ex is UnauthorizedAccessException or IOException) { skipped++; }
-                }
-            }
-            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException) { skipped++; }
-        }
-        progress?.Report(new(100, $"找到 {result.Count:N0} 项；扫描 {visited:N0} 项" + (skipped > 0 ? $"，跳过 {skipped} 个无法访问的项目" : "")));
-        return result.OrderByDescending(x => x.IsDirectory).ThenBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
-    }, ct);
+        var summary = await SearchRootsAsync([root], query, imagesOnly,
+            progress is null ? null : new LegacySearchProgress(progress), ct).ConfigureAwait(false);
+        ct.ThrowIfCancellationRequested();
+        progress?.Report(new(100, $"找到 {summary.Results.Count:N0} 项；扫描 {summary.ScannedEntries:N0} 项" +
+            (summary.IsTruncated ? "；已达到结果显示上限" : "") +
+            (summary.SkippedEntries > 0 ? $"，跳过 {summary.SkippedEntries:N0} 项" : "")));
+        return summary.Results.OrderByDescending(x => x.IsDirectory)
+            .ThenBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+    }
+
+    private sealed class LegacySearchProgress(IProgress<ToolProgress> progress) : IProgress<FileSearchUpdate>
+    {
+        public void Report(FileSearchUpdate value) => progress.Report(new(0,
+            $"已扫描 {value.ScannedEntries:N0} 项，找到 {value.MatchedCount:N0} 项"));
+    }
 
     public IReadOnlyList<RenameItem> PreviewRename(IEnumerable<string> paths, string prefix, int startNumber)
     {

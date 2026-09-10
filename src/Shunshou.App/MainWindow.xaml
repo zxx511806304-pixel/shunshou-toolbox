@@ -22,27 +22,27 @@
         <StackPanel Padding="18,12,18,24" Spacing="9">
           <Border Background="{ThemeResource BrandSoftBrush}" CornerRadius="6" Padding="10,7" HorizontalAlignment="Left"><StackPanel Orientation="Horizontal" Spacing="7"><FontIcon Glyph="&#xE73E;" FontSize="12" Foreground="{ThemeResource BrandBrush}"/><TextBlock Text="本地处理 · 离线可用" FontSize="12" Foreground="{ThemeResource BrandBrush}"/></StackPanel></Border>
           <TextBlock Text="解压即用，无需激活" Style="{StaticResource MutedTextStyle}"/>
-          <TextBlock Text="预览版 0.1 · 转换不覆盖原件" FontSize="11" Foreground="{ThemeResource MutedBrush}"/>
+          <TextBlock x:Name="VersionText" Text="预览版 0.1.1 · 转换不覆盖原件" FontSize="11" Foreground="{ThemeResource MutedBrush}"/>
         </StackPanel>
       </NavigationView.PaneFooter>
       <Grid Padding="28,18,28,22">
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <StackPanel Margin="0,0,0,20" Spacing="7">
           <TextBlock x:Name="CategoryTitle" Text="压缩与打包" FontSize="30" FontWeight="SemiBold"/>
           <TextBlock x:Name="CategorySubtitle" Text="把文件处理到刚好能提交。复杂参数，交给工具箱。" Style="{StaticResource MutedTextStyle}"/>
         </StackPanel>
-        <ScrollViewer x:Name="WorkspaceScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Spacing="12" Padding="0,0,4,4">
-            <Border Style="{StaticResource CardStyle}" Padding="18,12">
+            <Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="18,12" Margin="0,0,4,12">
               <Grid ColumnSpacing="24"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="300"/></Grid.ColumnDefinitions>
                 <StackPanel Spacing="7"><TextBlock Text="今天，要处理什么？" FontSize="18" FontWeight="SemiBold"/><TextBlock x:Name="OperationDescription" Text="输入上传上限，调整包内图片，再核验整个压缩包的大小。" Style="{StaticResource MutedTextStyle}"/></StackPanel>
                 <ComboBox x:Name="OperationBox" Grid.Column="1" Header="选择工具" HorizontalAlignment="Stretch" SelectionChanged="Operation_SelectionChanged" AutomationProperties.Name="选择工具"/>
               </Grid>
             </Border>
+        <ScrollViewer x:Name="WorkspaceScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Spacing="12" Padding="0,0,4,4">
             <Border Style="{StaticResource CardStyle}">
               <StackPanel Spacing="10">
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Orientation="Horizontal" Spacing="10"><Border Width="24" Height="24" Background="{ThemeResource BrandSoftBrush}" CornerRadius="6"><TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource BrandBrush}"/></Border><TextBlock Text="添加要处理的文件" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/></StackPanel><Button x:Name="ClearButton" Grid.Column="1" Content="清空" Click="Clear_Click" AutomationProperties.Name="清空已选择的文件" Padding="12,4"/></Grid>
-                <Border Background="{ThemeResource WorkspaceBrush}" CornerRadius="8" BorderBrush="{ThemeResource SurfaceStrokeBrush}" BorderThickness="1" Padding="14" AllowDrop="True" DragOver="Input_DragOver" Drop="Input_Drop">
+                <Border Background="{ThemeResource WorkspaceBrush}" CornerRadius="8" BorderBrush="{ThemeResource SurfaceStrokeBrush}" BorderThickness="1" Padding="14">
                   <Grid ColumnSpacing="18" RowSpacing="8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -62,18 +62,82 @@
                 </Grid>
                 <StackPanel x:Name="FormatPanel" Orientation="Horizontal" Spacing="20" Visibility="Collapsed"><ComboBox x:Name="FormatBox" Header="输出格式" MinWidth="180" AutomationProperties.Name="输出格式"/><NumberBox x:Name="ImageQuality" Header="图片质量（1–100）" Value="90" Minimum="1" Maximum="100" Width="180" SpinButtonPlacementMode="Compact" AutomationProperties.Name="图片质量"/></StackPanel>
                 <StackPanel x:Name="PdfPanel" Spacing="8" Visibility="Collapsed"><NumberBox x:Name="PdfDpi" Header="导出分辨率（DPI）" Value="150" Minimum="72" Maximum="600" SmallChange="50" Width="220" HorizontalAlignment="Left" SpinButtonPlacementMode="Compact" AutomationProperties.Name="PDF图片分辨率"/><TextBlock Text="默认 150 DPI；精细文字可选 300 DPI。长图采用 PNG，不自动降低清晰度，页数多时会占用更多内存。" Style="{StaticResource MutedTextStyle}"/></StackPanel>
-                <StackPanel x:Name="SearchPanel" Spacing="10" Visibility="Collapsed"><TextBox x:Name="SearchQuery" Header="要查找的名称" PlaceholderText="例如：毕业论文、发票、照片" AutomationProperties.Name="要查找的文件或文件夹名称"/><CheckBox x:Name="ImagesOnly" Content="只查找图片"/></StackPanel>
                 <StackPanel x:Name="RenamePanel" Orientation="Horizontal" Spacing="16" Visibility="Collapsed"><TextBox x:Name="RenamePrefix" Header="统一名称前缀" Text="资料" MinWidth="220"/><NumberBox x:Name="RenameStart" Header="起始序号" Value="1" Minimum="0" Width="150" SpinButtonPlacementMode="Compact"/></StackPanel>
                 <InfoBar x:Name="FeatureNote" IsOpen="False" IsClosable="False" Severity="Informational"/>
                 <Grid x:Name="OutputPanel" ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="OutputDirectory" Header="保存到" AutomationProperties.Name="输出文件夹"/><Button Grid.Column="1" Content="浏览…" VerticalAlignment="Bottom" Click="ChooseOutput_Click" AutomationProperties.Name="选择输出文件夹"/></Grid>
                 <Expander x:Name="AdvancedPanel" Header="更多图片设置" HorizontalAlignment="Stretch" Visibility="Collapsed"><NumberBox x:Name="ImageWidth" Header="最大宽度（像素，0 表示保持原尺寸）" Value="0" Minimum="0" Maximum="50000" Width="340" HorizontalAlignment="Left" SpinButtonPlacementMode="Compact"/></Expander>
               </StackPanel>
             </Border>
-            <InfoBar x:Name="StatusInfo" IsOpen="False" IsClosable="True"/>
-            <Border x:Name="ResultPanel" Style="{StaticResource CardStyle}" Visibility="Collapsed"><StackPanel Spacing="12"><TextBlock Text="处理结果" FontSize="18" FontWeight="SemiBold"/><TextBox x:Name="ResultText" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="220" AutomationProperties.Name="处理结果详情"/><ListView x:Name="SearchResults" MaxHeight="260" Visibility="Collapsed" DoubleTapped="SearchResults_DoubleTapped" AutomationProperties.Name="搜索结果，双击打开"/></StackPanel></Border>
+            <Border x:Name="ResultPanel" Style="{StaticResource CardStyle}" Visibility="Collapsed"><StackPanel Spacing="12"><TextBlock Text="处理结果" FontSize="18" FontWeight="SemiBold"/><TextBox x:Name="ResultText" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="220" AutomationProperties.Name="处理结果详情"/></StackPanel></Border>
           </StackPanel>
         </ScrollViewer>
-        <Border Grid.Row="2" Background="{ThemeResource SurfaceBrush}" BorderBrush="{ThemeResource SurfaceStrokeBrush}" BorderThickness="1" CornerRadius="10" Padding="20,14" Margin="0,16,4,0">
+        <Grid x:Name="SearchWorkspace" Grid.Row="2" Visibility="Collapsed" RowSpacing="12" Margin="0,0,4,0">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <Border Style="{StaticResource CardStyle}" Padding="16,12">
+            <StackPanel Spacing="8">
+              <Grid ColumnSpacing="14">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="225"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBox x:Name="SearchQuery" Header="要查找的名称" PlaceholderText="输入名称，按 Enter 搜索" KeyDown="SearchQuery_KeyDown" AutomationProperties.Name="要查找的文件或文件夹名称"/>
+                <ComboBox x:Name="SearchScopeBox" Grid.Column="1" Header="搜索范围" HorizontalAlignment="Stretch" SelectionChanged="SearchScope_Changed" AutomationProperties.Name="搜索范围"/>
+                <CheckBox x:Name="ImagesOnly" Grid.Column="2" Content="只看图片" VerticalAlignment="Bottom" Margin="0,0,0,3"/>
+              </Grid>
+              <Grid x:Name="SearchFolderPanel" Visibility="Collapsed" ColumnSpacing="10">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock x:Name="SearchFolderLabel" Text="选择文件夹，或将文件夹拖入窗口" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Style="{StaticResource MutedTextStyle}"/>
+                <Button x:Name="ChooseSearchFolderButton" Grid.Column="1" Content="选择文件夹" Click="ChooseSearchFolder_Click"/>
+              </Grid>
+            </StackPanel>
+          </Border>
+          <Grid Grid.Row="1" ColumnSpacing="12">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="270"/></Grid.ColumnDefinitions>
+            <Border Style="{StaticResource CardStyle}" Padding="12">
+              <Grid RowSpacing="8">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <TextBlock x:Name="SearchCount" Text="搜索结果" FontWeight="SemiBold" Margin="4,0"/>
+                <ListView x:Name="SearchResults" Grid.Row="1" SelectionMode="Single" SelectionChanged="SearchResults_SelectionChanged" DoubleTapped="SearchResults_DoubleTapped" HorizontalContentAlignment="Stretch" AutomationProperties.Name="搜索结果，选择查看预览，双击打开">
+                  <ListView.ItemTemplate>
+                    <DataTemplate>
+                      <Grid Padding="2,7" ColumnSpacing="12" ToolTipService.ToolTip="{Binding FullPath}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="84"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Border Height="66" CornerRadius="6" Background="{ThemeResource WorkspaceBrush}">
+                          <Grid><FontIcon Glyph="{Binding Glyph}" Visibility="{Binding IconVisibility}" FontSize="28" Foreground="{ThemeResource MutedBrush}"/><Image Source="{Binding Thumbnail}" Stretch="Uniform" Loaded="SearchThumbnail_Loaded" Unloaded="SearchThumbnail_Unloaded" DataContextChanged="SearchThumbnail_DataContextChanged" AutomationProperties.Name="文件缩略图"/></Grid>
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                          <TextBlock Text="{Binding FullPath}" TextTrimming="CharacterEllipsis" Foreground="{ThemeResource MutedBrush}" FontSize="12"/>
+                          <TextBlock Text="{Binding Detail}" FontSize="11" Foreground="{ThemeResource MutedBrush}"/>
+                        </StackPanel>
+                      </Grid>
+                    </DataTemplate>
+                  </ListView.ItemTemplate>
+                </ListView>
+                <StackPanel x:Name="SearchEmpty" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" IsHitTestVisible="False">
+                  <FontIcon Glyph="&#xE721;" FontSize="32" Foreground="{ThemeResource MutedBrush}"/>
+                  <TextBlock x:Name="SearchEmptyText" Text="输入文件或文件夹名称" Foreground="{ThemeResource MutedBrush}" TextWrapping="Wrap" TextAlignment="Center"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource CardStyle}" Padding="16">
+              <Grid RowSpacing="10">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <TextBlock Text="文件预览" FontSize="16" FontWeight="SemiBold"/>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="8">
+                  <Border Height="150" CornerRadius="8" Background="{ThemeResource WorkspaceBrush}">
+                    <Grid><FontIcon x:Name="PreviewIcon" Glyph="&#xE8A5;" FontSize="48" Foreground="{ThemeResource MutedBrush}"/><Image x:Name="SelectedPreview" Stretch="Uniform" AutomationProperties.Name="选中文件预览"/><ProgressRing x:Name="PreviewLoading" IsActive="False" Width="26" Height="26" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8"/></Grid>
+                  </Border>
+                  <TextBlock x:Name="PreviewName" Text="选择结果查看预览" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                  <TextBlock x:Name="PreviewDetail" FontSize="12" Foreground="{ThemeResource MutedBrush}" TextWrapping="Wrap"/>
+                  <TextBlock x:Name="PreviewPath" FontSize="12" Foreground="{ThemeResource MutedBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" IsTextSelectionEnabled="True"/>
+                </StackPanel>
+                </ScrollViewer>
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8"><Button x:Name="OpenSearchItemButton" Content="打开" Click="OpenSearchItem_Click" IsEnabled="False"/><Button x:Name="RevealSearchItemButton" Content="打开位置" Click="RevealSearchItem_Click" IsEnabled="False"/></StackPanel>
+              </Grid>
+            </Border>
+          </Grid>
+        </Grid>
+        <InfoBar x:Name="StatusInfo" Grid.Row="3" IsOpen="False" IsClosable="True" Margin="0,8,4,0"/>
+        <Border Grid.Row="4" Background="{ThemeResource SurfaceBrush}" BorderBrush="{ThemeResource SurfaceStrokeBrush}" BorderThickness="1" CornerRadius="10" Padding="20,14" Margin="0,12,4,0">
           <Grid ColumnSpacing="18"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Spacing="7" VerticalAlignment="Center"><TextBlock x:Name="ProgressText" Text="准备就绪 · 文件只在你的电脑处理" Style="{StaticResource MutedTextStyle}"/><ProgressBar x:Name="TaskProgress" Minimum="0" Maximum="100" Value="0" Height="3"/></StackPanel><Button x:Name="OpenOutputButton" Grid.Column="1" Content="打开输出" IsEnabled="False" Click="OpenOutput_Click" VerticalAlignment="Center"/><Button x:Name="CancelButton" Grid.Column="2" Content="取消" IsEnabled="False" Click="Cancel_Click" VerticalAlignment="Center"/><Button x:Name="RunButton" Grid.Column="3" Content="开始处理" Style="{StaticResource AccentButtonStyle}" Padding="25,10" Click="Run_Click" AutomationProperties.Name="开始处理文件" VerticalAlignment="Center"/></Grid>
         </Border>
       </Grid>

@@ -5,7 +5,8 @@ Directory.CreateDirectory(root);
 Console.WriteLine($"Test artifacts: {root}");
 try
 {
-    if (args.Contains("--compression-boundary")) await CompressionTests.RunBoundaryAsync(root);
+    if (args.Contains("--inputs")) await InputTests.RunAsync(root);
+    else if (args.Contains("--compression-boundary")) await CompressionTests.RunBoundaryAsync(root);
     else if (args.Contains("--media-precision")) await MediaTests.RunPrecisionAsync(root);
     else if (args.Contains("--media")) await MediaTests.RunAsync(root);
     else if (args.Contains("--files")) await FileTests.RunAsync(root);

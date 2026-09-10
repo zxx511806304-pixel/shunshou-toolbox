@@ -22,6 +22,14 @@ ZIP 解压拒绝路径穿越、重复冲突和链接，预览版每次最多 20,
 
 重命名采用临时名称分两阶段迁移，失败尝试回滚；写入包含内容哈希的撤销记录，文件被修改后拒绝盲目撤销。
 
+## 0.1.1 文件输入、搜索与预览
+
+`InputSelectionPolicy` 是文件选择与拖放的共同入口；WinUI 根节点接收文件事件，读取 StorageItems 时持有 deferral，异步结束后再次检查工具和忙碌状态。非法输入不会替换已有有效选择。实现依据 [微软拖放文档](https://learn.microsoft.com/en-us/windows/apps/develop/data/drag-and-drop)。
+
+`FileSearch.cs` 提供磁盘发现和多范围名称遍历；不建立常驻服务，不要求管理员权限。搜索在后台线程运行，按批次报告结果、进度、取消和截断。搜索列表独立占据有限高度，使用 WinUI ListView 的虚拟化；没有嵌套在工具表单的 ScrollViewer 中。
+
+`SearchPreviewService` 使用 [Windows 缩略图接口](https://learn.microsoft.com/en-us/uwp/api/windows.storage.storagefile.getthumbnailasync?view=winrt-26100)，本地图片缺少系统缩略图时由内置 Skia 解码。图像尺寸、有界编码缓存和并发分别限制；UI 只为可见行保留解码位图。非图像不调用文档应用生成预览，云占位文件、远程路径及目录链接不触发内容取回。选中预览拥有独立取消标记，快速切换不会被旧请求覆盖。
+
 ## 下一轮迭代
 
 1. 使用真实文档与照片继续改善压缩质量选择和对比预览，尤其是文字截图。
