@@ -1,6 +1,6 @@
 # 顺手工具箱
 
-面向日常学习与办公的 Windows 离线工具箱。解压运行，不登录、不激活，文件在本机处理。当前为 **0.2.0 预览版**，功能与 UI 会继续迭代。
+面向日常学习与办公的 Windows 离线工具箱。解压运行，不登录、不激活，文件在本机处理。当前为 **0.2.1 预览版**，功能与 UI 会继续迭代。
 
 ## 已实现
 
@@ -15,7 +15,24 @@
 
 ## 运行
 
-取得 Windows x64 便携 ZIP 后，**完整解压**到可写文件夹，双击 `顺手工具箱.exe`。不要只复制单个 EXE。支持 Windows 10 2004（19041）及以上、Windows 11；预览版仅 x64。
+支持 Windows 10 2004（19041）及以上、Windows 11；预览版仅 x64。提供两种包含相同工具功能的完整包：
+
+- **自解压 EXE**：双击 `ShunshouToolbox-0.2.1-win-x64-setup.exe`，选择软件存放位置，确认后解压。默认勾选创建桌面快捷方式。以后运行新版 EXE 可更新同一目录。
+- **便携 ZIP**：将 `ShunshouToolbox-0.2.1-win-x64.zip` **完整解压**到可写文件夹，双击 `顺手工具箱.exe`。首次正常运行会创建桌面快捷方式；主动删除快捷方式后，不会每次启动都重新生成。不要只复制单个 EXE。
+
+桌面快捷方式指向软件文件夹；创建后仍需保留完整文件夹。自解压 EXE 只部署软件文件和选择的快捷方式，不登记系统卸载项，不需要账号或激活。处理与解压更新均可离线完成。
+
+默认位置在系统盘当前用户的应用数据目录中，可直接写入，正常部署不请求管理员权限；也可选择其他可写位置。
+
+## 更新
+
+推荐下载新版自解压 EXE 后运行。程序会记住当前用户选择的存放位置；首次升级从旧 ZIP 解压的版本时，可能需要手动选中旧软件所在文件夹。更新前请保存工作并退出工具箱；检测到该目录的软件仍在运行时，会停止更新并提示，不强制结束进程。
+
+更新会先校验完整包，在旁边准备新文件并保留 `data` 和不属于原包的用户文件，再切换目录。旧目录会保留为备份，占用额外磁盘空间。中断后重新运行同一新版 EXE 并选择相同位置，可以检查并恢复未完成的切换。更新完成后，若新版运行中发现问题，旧目录仍可用于人工恢复；本版不自动判断新功能是否正常并回退。
+
+从 ZIP 更新时请使用新文件夹，退出后再迁移完整 `data` 目录及自己存入软件目录的文件，不建议直接覆盖解压。尤其要保留 `data/uninstall-backups` 中的完整性密钥及全部备份文件；工具生成的外部输出也不要删除。
+
+目前两种发布包都是**全量包**，尚无在线自动更新或差分下载。EXE 尚未代码签名。详见 [分发与更新说明](docs/distribution-and-updates.md)。
 
 生成的文件默认保存到“文档/顺手工具箱输出”，也可自行选择位置。转换不覆盖原件。批量改名会更改原文件名，执行前展示预览，恢复记录保存在软件目录 `data/rename-history`。
 
@@ -53,7 +70,7 @@
 
 ## 开发
 
-使用 .NET SDK 10.0.401、Windows x64。UI 与处理服务分别位于 `src/Shunshou.App`、`src/Shunshou.Core`；真实生成样本的集成测试位于 `tests/Shunshou.SmokeTests`。
+使用 .NET SDK 10.0.401、Windows x64。UI 与处理服务分别位于 `src/Shunshou.App`、`src/Shunshou.Core`；`Shunshou.Deployment` 负责包校验与目录切换，`Shunshou.DesktopIntegration` 负责快捷方式和运行标记，`Shunshou.Setup` 提供独立解压界面。真实生成样本的集成测试位于 `tests` 下。
 
 ```powershell
 dotnet restore Shunshou.slnx
@@ -61,13 +78,16 @@ pwsh ./scripts/Download-Runtime.ps1
 pwsh ./scripts/Download-OcrModels.ps1
 dotnet build Shunshou.slnx -c Release
 dotnet run --project tests/Shunshou.SmokeTests -c Release -- artifacts/smoke
+dotnet run --project tests/Shunshou.Deployment.Tests -c Release -- artifacts/deployment
+dotnet run --project tests/Shunshou.DesktopIntegration.Tests -c Release -- artifacts/desktop-integration
 pwsh ./scripts/Build-Portable.ps1
+pwsh ./scripts/Build-Setup.ps1
 ```
 
 可用 `--compression`、`--images`、`--pdf`、`--ocr`、`--media`、`--files`、`--inputs`、`--uninstall` 单独运行测试组。图片和媒体样本由测试生成，不使用用户文件。UI 支持 `--screenshot-dir <目录> --theme light|dark`，以及 `--verify-ui <测试夹具目录> <输出目录>`，验证真实 WinUI 中的输入、搜索、缩略图、OCR 编辑流程和卸载界面。卸载测试使用生成的文件和内存注册表/进程执行器，不卸载测试电脑上的实际软件。
 
 下载脚本校验固定 SHA256。FFmpeg 使用固定 autobuild 资产，Microsoft C++ 运行库从官方签名再分发包中提取，构建过程中不安装系统运行库。OCR 模型需要完成 NuGet 还原后单独下载；运行成品时无需联网。
 
-便携构建同时携带 .NET、Windows App SDK、本地 C++ 运行库、FFmpeg 和 OCR 模型，并生成文件哈希清单与静态 DLL 依赖报告。已有同版本输出时脚本会拒绝覆盖；使用新的版本号或指定新的 `-OutputRoot`。构建成功仍需要对最终目录实际启动和离线验证。
+便携构建同时携带 .NET、Windows App SDK、本地 C++ 运行库、FFmpeg 和 OCR 模型，并生成文件哈希清单与静态 DLL 依赖报告。自解压构建嵌入现有便携 ZIP 及其 SHA256 元数据，包含自身需要的 .NET 运行库，产出独立 EXE。已有同版本输出时脚本会拒绝覆盖；使用新的版本号或指定新的 `-OutputRoot`。构建成功仍需要对最终目录实际启动和离线验证。
 
-详情见 [架构与更新约定](docs/architecture.md)、[本版测试报告](docs/validation-0.2.0.md)、[0.1.1 测试报告](docs/validation-0.1.1.md)、[初版测试报告](docs/validation.md)、[第三方组件](THIRD-PARTY-NOTICES.md)。本项目自有代码未授予公开再分发许可；第三方组件遵循各自许可证。
+详情见 [架构与更新约定](docs/architecture.md)、[分发与更新说明](docs/distribution-and-updates.md)、[0.2.1 测试报告](docs/validation-0.2.1.md)、[0.2.0 功能测试报告](docs/validation-0.2.0.md)、[0.1.1 测试报告](docs/validation-0.1.1.md)、[初版测试报告](docs/validation.md)、[第三方组件](THIRD-PARTY-NOTICES.md)。本项目自有代码未授予公开再分发许可；第三方组件遵循各自许可证。

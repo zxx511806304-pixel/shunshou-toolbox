@@ -16,7 +16,7 @@ env:
 jobs:
   verify:
     runs-on: windows-2025
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-dotnet@v6.0.0
@@ -33,6 +33,26 @@ jobs:
         run: dotnet build Shunshou.slnx -c Release --no-restore
       - name: Verify generated documents, images, archives, audio and video
         run: dotnet run --project tests/Shunshou.SmokeTests -c Release --no-build -- artifacts/smoke
+      - name: Verify deployment and shortcut isolation
+        shell: pwsh
+        run: |
+          dotnet run --project tests/Shunshou.Deployment.Tests -c Release --no-build -- artifacts/deployment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project tests/Shunshou.DesktopIntegration.Tests -c Release --no-build -- artifacts/desktop-integration
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build portable package
         shell: pwsh
         run: ./scripts/Build-Portable.ps1
+      - name: Build offline self-extracting package
+        shell: pwsh
+        run: ./scripts/Build-Setup.ps1
+      - name: Verify final self-extracting EXE in an isolated directory
+        shell: pwsh
+        run: |
+          $setupVersion = ([xml](Get-Content -LiteralPath ./Directory.Build.props -Raw)).Project.PropertyGroup.Version
+          $setupExe = Join-Path $PWD "dist/ShunshouToolbox-$setupVersion-win-x64-setup.exe"
+          $setupProcess = Start-Process -FilePath $setupExe -ArgumentList '--verify-setup', 'artifacts/setup-package' -WorkingDirectory $PWD -PassThru -WindowStyle Hidden
+          $setupProcess.WaitForExit()
+          if ($setupProcess.ExitCode -ne 0) { throw "Setup verification exited $($setupProcess.ExitCode)." }
+          $setupReport = Get-Content -LiteralPath ./artifacts/setup-package/setup-verification.json -Raw | ConvertFrom-Json
+          if (-not $setupReport.Passed) { throw 'Setup verification did not pass.' }

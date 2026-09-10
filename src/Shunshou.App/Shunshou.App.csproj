@@ -24,6 +24,7 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260317003" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7705" PrivateAssets="all" />
     <ProjectReference Include="..\Shunshou.Core\Shunshou.Core.csproj" />
+    <ProjectReference Include="..\Shunshou.DesktopIntegration\Shunshou.DesktopIntegration.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />

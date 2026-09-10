@@ -1,4 +1,6 @@
 using Microsoft.UI.Xaml;
+using Shunshou.DesktopIntegration;
+using System.Runtime.InteropServices;
 
 namespace Shunshou.App;
 
@@ -8,6 +10,7 @@ namespace Shunshou.App;
 public partial class App : Application
 {
     private Window? _window;
+    private IDisposable? _applicationLease;
     
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
@@ -31,11 +34,43 @@ public partial class App : Application
     {
         try
         {
+            var verificationLaunch = Environment.GetCommandLineArgs().Skip(1).Any(argument =>
+                argument.StartsWith("--verify", StringComparison.Ordinal) || argument.StartsWith("--screenshot", StringComparison.Ordinal));
+            if (!verificationLaunch)
+            {
+                try { _applicationLease = UpdateCoordination.AcquireApplicationLease(AppContext.BaseDirectory); }
+                catch (Exception ex)
+                {
+                    LogException(ex, "update-coordination");
+                    MessageBox(nint.Zero, "无法确认软件是否正在更新。请关闭更新窗口后重试。", "顺手工具箱", 0x10);
+                    Exit();
+                    return;
+                }
+                if (_applicationLease is null)
+                {
+                    MessageBox(nint.Zero, "软件正在更新，请等待更新完成后再打开。", "顺手工具箱", 0x40);
+                    Exit();
+                    return;
+                }
+                AppDomain.CurrentDomain.ProcessExit += (_, _) => _applicationLease?.Dispose();
+            }
             _window = new MainWindow();
             _window.Activate();
+            if (!verificationLaunch)
+            {
+                try
+                {
+                    var result = new DesktopShortcutService().InitializeOnNormalLaunch(AppContext.BaseDirectory);
+                    foreach (var warning in result.Warnings) LogException(new IOException(warning), "desktop-integration");
+                }
+                catch (Exception ex) { LogException(ex, "desktop-integration"); }
+            }
         }
         catch (Exception ex) { LogException(ex, "launch"); throw; }
     }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int MessageBox(nint window, string text, string title, uint type);
 
     internal static void LogException(Exception exception, string source)
     {

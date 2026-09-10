@@ -2,8 +2,13 @@
   <Folder Name="/src/">
     <Project Path="src/Shunshou.App/Shunshou.App.csproj" />
     <Project Path="src/Shunshou.Core/Shunshou.Core.csproj" />
+    <Project Path="src/Shunshou.Deployment/Shunshou.Deployment.csproj" />
+    <Project Path="src/Shunshou.DesktopIntegration/Shunshou.DesktopIntegration.csproj" />
+    <Project Path="src/Shunshou.Setup/Shunshou.Setup.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Shunshou.SmokeTests/Shunshou.SmokeTests.csproj" />
+    <Project Path="tests/Shunshou.Deployment.Tests/Shunshou.Deployment.Tests.csproj" />
+    <Project Path="tests/Shunshou.DesktopIntegration.Tests/Shunshou.DesktopIntegration.Tests.csproj" />
   </Folder>
 </Solution>
