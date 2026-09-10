@@ -19,7 +19,7 @@ public sealed partial class MainWindow
         "ZIP 解压" => InputTool.ExtractZip,
         "合并 PDF" => InputTool.MergePdf,
         "图片格式转换" => InputTool.ImageConvert,
-        "截图提取文字" => InputTool.Ocr,
+        "图片提取文字" => InputTool.Ocr,
         "按名称搜索" => InputTool.Search,
         "批量重命名" => InputTool.Rename,
         "撤销重命名" => InputTool.UndoRename,
@@ -66,6 +66,7 @@ public sealed partial class MainWindow
 
     private bool AcceptInputPaths(IEnumerable<string> paths)
     {
+        if (_category == "software" || OcrEditor.IsBusy) return false;
         var result = InputSelectionPolicy.Select(CurrentInputTool, _inputs, paths, _busy);
         if (result.Applied)
         {
@@ -103,7 +104,7 @@ public sealed partial class MainWindow
 
     private void Window_DragOver(object sender, DragEventArgs args)
     {
-        bool canReceive = !_busy && !_receivingDrop && args.DataView.Contains(StandardDataFormats.StorageItems);
+        bool canReceive = _category != "software" && !OcrEditor.IsBusy && !_busy && !_receivingDrop && args.DataView.Contains(StandardDataFormats.StorageItems);
         args.AcceptedOperation = canReceive ? DataPackageOperation.Copy : DataPackageOperation.None;
         args.Handled = true;
         if (canReceive)

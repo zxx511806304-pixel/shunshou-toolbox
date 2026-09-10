@@ -28,7 +28,28 @@ public static class InputSelectionPolicy
         ".caf", ".mka", ".oga", ".ogv", ".vob", ".flv", ".f4v", ".mp2", ".m2v", ".mxf"
     };
 
-    public static bool AllowsMultiple(InputTool tool) => tool is InputTool.MergePdf or InputTool.ImageConvert or InputTool.Rename;
+    // OCR keeps a batch of images in the workspace and processes its selected image.
+    public static bool AllowsMultiple(InputTool tool) => tool is InputTool.MergePdf or InputTool.ImageConvert or InputTool.Ocr or InputTool.Rename;
+
+    /// <summary>Finds compatible existing inputs without imposing a processing-count limit or changing the source collection.</summary>
+    public static IReadOnlyList<string> CompatiblePaths(InputTool tool, IEnumerable<string> paths)
+    {
+        var result = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string candidate in paths)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(candidate)) continue;
+                string path = Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidate));
+                if (!seen.Add(path)) continue;
+                bool directory = Directory.Exists(path);
+                if (IsValid(tool, path, !directory && File.Exists(path), directory)) result.Add(path);
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { }
+        }
+        return result;
+    }
 
     public static string[] FileFilters(InputTool tool) => tool switch
     {

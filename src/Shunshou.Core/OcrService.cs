@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using ImageMagick;
 using SkiaSharp;
 using Windows.Graphics.Imaging;
 using Windows.Media.Ocr;
@@ -21,6 +22,10 @@ public sealed class OcrService
     {
         ct.ThrowIfCancellationRequested();
         if (!File.Exists(imagePath)) throw new FileNotFoundException("找不到需要识别的图片。", imagePath);
+        // Skia decodes common screenshot formats. A TIFF's first page is normalized
+        // locally with the already-bundled Magick decoder, at its original dimensions.
+        using var tiff = IsTiff(imagePath) ? await PrepareTiffAsync(imagePath, ct).ConfigureAwait(false) : null;
+        imagePath = tiff?.Path ?? imagePath;
         if (File.Exists(Path.Combine(modelDirectory, "v6", "PP-OCRv6_rec_small.onnx")))
         {
             EngineDescription = "内置 PP-OCRv6 中英文模型（离线）";
@@ -28,6 +33,71 @@ public sealed class OcrService
         }
         EngineDescription = "Windows 本机 OCR 语言组件（离线后备）";
         return await RecognizeWithWindowsAsync(imagePath, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Reads only image metadata. GIF and TIFF recognition uses the first frame/page.</summary>
+    public static (int Width, int Height) ReadImageDimensions(string path)
+    {
+        if (!File.Exists(path)) throw new FileNotFoundException("找不到这张图片，请重新添加。", path);
+        if (IsTiff(path))
+        {
+            using var source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var probe = new MagickImage();
+            probe.Ping(source, TiffFirstPageSettings());
+            ValidateImageDimensions(probe.Width, probe.Height);
+            return ((int)probe.Width, (int)probe.Height);
+        }
+        using var codec = SKCodec.Create(path) ?? throw new InvalidDataException("无法读取这张图片，请选择完整的 PNG、JPG、WebP、BMP、TIFF 或 GIF 图片。");
+        ValidateImageDimensions((uint)codec.Info.Width, (uint)codec.Info.Height);
+        return (codec.Info.Width, codec.Info.Height);
+    }
+
+    private static bool IsTiff(string path) => Path.GetExtension(path).ToLowerInvariant() is ".tif" or ".tiff";
+    private static MagickReadSettings TiffFirstPageSettings() => new() { Format = MagickFormat.Tiff, FrameIndex = 0, FrameCount = 1 };
+    private static void ValidateImageDimensions(uint width, uint height)
+    {
+        if (width == 0 || height == 0 || (ulong)width * height > 100_000_000)
+            throw new InvalidOperationException("图片超过一亿像素或尺寸无效，请裁剪需要识别的区域。");
+    }
+
+    private static Task<TemporaryTiffInput> PrepareTiffAsync(string path, CancellationToken ct) => Task.Run(() =>
+    {
+        ct.ThrowIfCancellationRequested();
+        TemporaryTiffInput? temporary = null;
+        try
+        {
+            // Keep the same read-only handle across ping and decode, preventing a
+            // writer from replacing dimensions between the bound check and allocation.
+            using var source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var image = new MagickImage();
+            var settings = TiffFirstPageSettings();
+            image.Ping(source, settings);
+            ValidateImageDimensions(image.Width, image.Height);
+            ct.ThrowIfCancellationRequested();
+            source.Position = 0;
+            image.Read(source, settings);
+            image.AutoOrient();
+            ct.ThrowIfCancellationRequested();
+            string directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ShunshouToolbox", "ocr-tiff");
+            Directory.CreateDirectory(directory);
+            temporary = new TemporaryTiffInput(System.IO.Path.Combine(directory, Guid.NewGuid().ToString("N") + ".png"));
+            using (var output = new FileStream(temporary.Path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                image.Write(output, MagickFormat.Png);
+            ct.ThrowIfCancellationRequested();
+            return temporary;
+        }
+        catch { temporary?.Dispose(); throw; }
+    }, ct);
+
+    private sealed class TemporaryTiffInput(string path) : IDisposable
+    {
+        public string Path { get; } = path;
+        public void Dispose()
+        {
+            try { File.Delete(Path); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 
     private async Task<string> RecognizeWithRapidAsync(string imagePath, CancellationToken ct)

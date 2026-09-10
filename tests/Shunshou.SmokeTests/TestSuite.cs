@@ -7,6 +7,7 @@ public static class TestSuite
     {
         Directory.CreateDirectory(root);
         await InputTests.RunAsync(root);
+        await UninstallTests.RunAsync(root);
         await CompressionTests.RunAsync(root);
         await CompressionTests.RunBoundaryAsync(root);
         await ImageTests.RunAsync(root);

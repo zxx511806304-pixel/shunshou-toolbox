@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '0.1.1',
+    [string]$Version = '0.2.0',
     [string]$OutputRoot = '',
     [string]$Dotnet = '',
     [switch]$SkipZip
@@ -31,7 +31,7 @@ try {
         '-p:Platform=x64' '-p:WindowsAppSDKSelfContained=true' '-p:PublishSingleFile=false' '-p:PublishTrimmed=false' `
         '-p:DebugType=None' '-p:DebugSymbols=false' "-p:Version=$Version" -o $stage --nologo
     if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
-    foreach ($resource in @('App.xbf','MainWindow.xbf','Shunshou.App.pri')) {
+    foreach ($resource in @('App.xbf','MainWindow.xbf','InputFileList.xbf','OcrWorkspace.xbf','UninstallerWorkspace.xbf','Shunshou.App.pri')) {
         if (-not (Test-Path -LiteralPath (Join-Path $stage $resource))) { throw "Published WinUI resource is missing: $resource" }
     }
     $hostPath = Join-Path $stage 'Shunshou.App.exe'

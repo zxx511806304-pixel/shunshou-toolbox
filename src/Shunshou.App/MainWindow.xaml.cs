@@ -26,9 +26,10 @@ public sealed partial class MainWindow : Window
     {
         ["compression"] = ["按上传上限压缩", "无损 ZIP 打包", "ZIP 解压"],
         ["pdf"] = ["PDF 逐页转图片", "PDF 转高清长图", "PDF 转可编辑 Word", "PDF 转可编辑 PPT", "合并 PDF", "拆分 PDF"],
-        ["image"] = ["图片格式转换", "截图提取文字"],
+        ["image"] = ["图片格式转换", "图片提取文字"],
         ["media"] = ["音视频格式转换", "按目标大小压缩"],
-        ["files"] = ["按名称搜索", "批量重命名", "撤销重命名"]
+        ["files"] = ["按名称搜索", "批量重命名", "撤销重命名"],
+        ["software"] = ["管理已安装软件"]
     };
 
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
@@ -52,9 +53,10 @@ public sealed partial class MainWindow : Window
         _ready = true;
         InitializeSearch();
         InitializeFileDrop();
+        InitializeWorkspaces(hwnd);
         Navigation.SelectedItem = Navigation.MenuItems[0];
         SelectCategory("compression");
-        Closed += (_, _) => { _cancellation?.Cancel(); DisposeSearch(); };
+        Closed += (_, _) => { _cancellation?.Cancel(); DisposeSearch(); OcrEditor.Dispose(); Uninstaller.Dispose(); };
     }
 
     private string Operation => OperationBox.SelectedItem as string ?? Operations[_category][0];
@@ -68,28 +70,28 @@ public sealed partial class MainWindow : Window
     private void SelectCategory(string category)
     {
         if (_busy) return;
+        _selectingCategory = true;
         _category = category;
         (CategoryTitle.Text, CategorySubtitle.Text) = category switch
         {
             "pdf" => ("PDF 处理", "从课件到办公资料，把页面变成你需要的样子。"),
             "image" => ("图片与文字", "转换图片，提取截图中的文字，整理日常素材。"),
             "media" => ("音频与视频", "转成常用格式，或为传输控制文件大小。"),
+            "software" => ("软件卸载", "查找已安装的软件，卸载后按需检查关联文件。"),
             "files" => ("文件搜索整理", "从熟悉的名称开始，让资料更容易找到。"),
             _ => ("压缩与打包", "把文件处理到刚好能提交。复杂参数，交给工具箱。")
         };
         OperationBox.ItemsSource = Operations[category];
         OperationBox.SelectedIndex = 0;
-        _inputs.Clear();
-        UpdateSelection();
+        _selectingCategory = false;
+        BuildOperationButtons();
         ConfigureOperation();
     }
 
     private void Operation_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
-        if (_ready && OperationBox.SelectedIndex >= 0)
+        if (_ready && !_selectingCategory && OperationBox.SelectedIndex >= 0)
         {
-            _inputs.Clear();
-            UpdateSelection();
             ConfigureOperation();
         }
     }
@@ -97,6 +99,15 @@ public sealed partial class MainWindow : Window
     private void ConfigureOperation()
     {
         string op = Operation;
+        RestoreInputDraft();
+        SyncOperationButtons();
+        bool software = _category == "software";
+        bool ocr = op == "图片提取文字";
+        SetVisible(OcrArea, ocr);
+        SetVisible(Uninstaller, software);
+        SetVisible(OperationCard, !software);
+        SetVisible(RunFooter, !software);
+        if (software) _ = LoadUninstallerAsync();
         bool target = op is "按上传上限压缩" or "按目标大小压缩";
         bool imageConvert = op == "图片格式转换";
         bool media = _category == "media";
@@ -108,7 +119,7 @@ public sealed partial class MainWindow : Window
         SetVisible(AdvancedPanel, imageConvert);
         SetVisible(PdfPanel, pdfImages);
         SetVisible(SearchWorkspace, op == "按名称搜索");
-        SetVisible(WorkspaceScroll, op != "按名称搜索");
+        SetVisible(GeneralArea, op != "按名称搜索" && !ocr && !software);
         ResetSearchView();
         SetVisible(RenamePanel, op == "批量重命名");
         SetVisible(OutputPanel, op is not "按名称搜索" and not "批量重命名" and not "撤销重命名");
@@ -123,7 +134,7 @@ public sealed partial class MainWindow : Window
             "按上传上限压缩" => ("拖入 ZIP 压缩包或图片文件夹", "优化 JPG、PNG、WebP，其他文件保留原样", "输入上传上限，调整包内图片，再核验整个压缩包的大小。"),
             "无损 ZIP 打包" => ("拖入文件或文件夹", "打包为 ZIP，完整保留文件内容", "无损打包适合整理传输，已经压缩过的图片和视频通常难以再次大幅缩小。"),
             "ZIP 解压" => ("拖入一个 ZIP 压缩包", "解压到新的文件夹，保留原压缩包", "展开 ZIP 压缩包，恢复目录与文件。"),
-            "截图提取文字" => ("拖入一张截图或图片", "识别印刷文字，可复制或保存为文本", "使用内置中英文模型识别截图，不上传图片。"),
+            "图片提取文字" => ("拖入截图或图片", "选择图片后识别，可修改、复制或保存文字", "拖入或粘贴图片，选中一张识别文字，可直接编辑和复制。"),
             "按名称搜索" => ("拖入文件或文件夹", "拖入文件夹可快速设置搜索范围", "按名称搜索本机磁盘，选择结果预览，双击打开。"),
             "批量重命名" => ("拖入一批需要整理的文件", "执行前预览新名称，保留文件扩展名", "按前缀和递增序号统一命名，生成可供恢复的记录。"),
             "撤销重命名" => ("选择此前生成的重命名记录", "选择 rename-history 文件夹里的 JSON 记录", "根据本地记录恢复原文件名。文件内容或位置变化时会停止恢复。"),
@@ -136,13 +147,18 @@ public sealed partial class MainWindow : Window
             Note("提取可编辑文字", "文档中的文字按阅读顺序生成段落，扫描页面自动识别中英文。");
         else if (media)
             Note("转换与质量", "转为 MP3、MP4、M4A 通常会损失质量；FLAC 可保存解码后的无损音频。目标大小过小时，工具会提示无法达标。");
-        RunButton.Content = op == "按名称搜索" ? "开始搜索" : op == "批量重命名" ? "预览重命名" : "开始处理";
+        RunButton.Content = ocr ? "开始识别" : op == "按名称搜索" ? "开始搜索" : op == "批量重命名" ? "预览重命名" : "开始处理";
         StatusInfo.IsOpen = false;
         ResultPanel.Visibility = Visibility.Collapsed;
-        SetVisible(OpenOutputButton, op != "按名称搜索");
+        SetVisible(OpenOutputButton, op != "按名称搜索" && !ocr);
         TaskProgress.Value = 0;
         ProgressText.Text = "准备就绪 · 文件只在你的电脑处理";
         WorkspaceScroll.ChangeView(null, 0, null, true);
+        if (_inputDraftMessage is { } message)
+        {
+            ShowStatus("已保留文件", message, InfoBarSeverity.Informational);
+            _inputDraftMessage = null;
+        }
     }
 
     private void Note(string title, string message)
@@ -201,18 +217,13 @@ public sealed partial class MainWindow : Window
 
     private void AddInputs(IEnumerable<string> paths) => AcceptInputPaths(paths);
 
-    private void UpdateSelection() => SelectionSummary.Text = _inputs.Count == 0
-        ? "还没有添加文件"
-        : _inputs.Count == 1 ? _inputs[0] : $"已选择 {_inputs.Count} 个文件\n" + string.Join("  ·  ", _inputs.Take(4).Select(Path.GetFileName)) + (_inputs.Count > 4 ? " …" : "");
-
-    private void Clear_Click(object sender, RoutedEventArgs args) { _inputs.Clear(); UpdateSelection(); }
-
     private sealed record UiResult(string Message, string? OutputDirectory = null, bool Warning = false);
 
     private async void Run_Click(object sender, RoutedEventArgs args)
     {
         if (_busy) return;
         if (Operation == "按名称搜索") { await RunSearchAsync(); return; }
+        if (Operation == "图片提取文字") { await RunOcrAsync(); return; }
         if (_inputs.Count == 0) { ShowError("请先添加要处理的文件或文件夹。"); return; }
         string op = Operation;
         string[] inputs = _inputs.ToArray();
@@ -290,12 +301,6 @@ public sealed partial class MainWindow : Window
                         return SavedMany(await pdf.SplitAsync(inputs[0], output, progress, token), output);
                     case "图片格式转换":
                         return SavedMany(await new ImageService().ConvertAsync(inputs, output, format, width, quality, progress, token), output);
-                    case "截图提取文字":
-                        string text = await new OcrService().RecognizeAsync(inputs[0], token);
-                        Directory.CreateDirectory(output);
-                        string textPath = OutputPaths.Unique(output, Path.GetFileNameWithoutExtension(inputs[0]) + "_文字.txt");
-                        await File.WriteAllTextAsync(textPath, text, token);
-                        return new UiResult(text + $"\n\n文本已保存：{textPath}", output, string.IsNullOrWhiteSpace(text));
                     case "音视频格式转换":
                     case "按目标大小压缩":
                         return Saved(await new MediaService().ConvertAsync(inputs[0], output, format, op == "按目标大小压缩" ? maxBytes : null, progress, token));
@@ -332,6 +337,9 @@ public sealed partial class MainWindow : Window
         _busy = busy;
         RunButton.IsEnabled = !busy;
         OperationBox.IsEnabled = !busy;
+        foreach (Control button in OperationButtons.Children) button.IsEnabled = !busy;
+        InputList.IsReadOnly = OcrInputList.IsReadOnly = busy;
+        OcrAddButton.IsEnabled = OcrClearButton.IsEnabled = !busy;
         Navigation.IsPaneToggleButtonVisible = false;
         foreach (NavigationViewItem item in Navigation.MenuItems) item.IsEnabled = !busy;
         AddFilesButton.IsEnabled = AddFolderButton.IsEnabled = ClearButton.IsEnabled = !busy;
@@ -368,6 +376,12 @@ public sealed partial class MainWindow : Window
             int verified = await VerifyUiAsync(commandArgs[verifyIndex + 1], commandArgs[verifyIndex + 2]);
             if (verified != 0) Environment.Exit(verified); else Application.Current.Exit();
             return;
+        }
+        if (commandArgs.Contains("--software"))
+        {
+            Navigation.SelectedItem = Navigation.MenuItems[5];
+            string? selectedId = commandArgs.FirstOrDefault(x => x.StartsWith("--select-app=", StringComparison.Ordinal))?[13..];
+            await LoadUninstallerAsync(selectedId);
         }
         int dirIndex = Array.IndexOf(commandArgs, "--screenshot-dir");
         int fileIndex = Array.IndexOf(commandArgs, "--screenshot");

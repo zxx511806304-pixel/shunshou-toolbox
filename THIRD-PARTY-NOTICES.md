@@ -21,3 +21,7 @@ FFmpeg 是独立进程，通过命令行读取本地文件。分发包含未经�
 正式向客户分发时，还应将 LGPL 组件及对应依赖的必要源码和构建资料，与二进制从同一分发渠道提供并核对各自义务。本预览包记录了来源、许可证和校验值，没有宣称已归档所有第三方完整对应源码。
 
 运行 Windows PDF 等系统 API 不意味着本软件获得 Microsoft Office、WPS、WinRAR、Everything 或商业 PDF SDK 的再分发权。本初版没有打包这些产品。
+
+## 卸载模块的研究参考
+
+本轮参考 [BCUninstaller/Bulk-Crap-Uninstaller](https://github.com/BCUninstaller/Bulk-Crap-Uninstaller) 的功能流程与公开实现：列表、正常卸载、残留预览及恢复。BCU 根项目为 Apache-2.0，但其 ObjectListView 子目录另含 GPLv3+ 代码。本软件没有打包 BCU、UninstallTools 或 ObjectListView，也没有复制其源文件；当前卸载模块是基于 Windows 公共 API 独立编写的保守实现。以上仓库链接仅说明研究来源，不代表我们已包含其全部能力或取得其他产品的商业授权。

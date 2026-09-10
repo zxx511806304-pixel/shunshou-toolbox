@@ -44,6 +44,29 @@ public sealed partial class MainWindow
             await SaveScreenshot(Path.Combine(output, "input-selection.png"));
             checks.Add("Window drop registration, visible overlay and shared picker/drop input acceptance preserve valid multi-selection");
 
+            RequireUi(OperationBox.Visibility == Visibility.Collapsed && OperationButtons.Children.Count == 2,
+                "Image tools are still hidden in a dropdown");
+            OperationBox.SelectedIndex = 1;
+            await _inputSyncTask;
+            RequireUi(_inputs.Count == 2 && OcrEditor.InputPath == landscape && OcrArea.Visibility == Visibility.Visible,
+                "Switching to OCR lost the image batch or active image");
+            OcrInputList.SelectPath(webp);
+            await _inputSyncTask;
+            RequireUi(OcrEditor.InputPath == webp && _inputs.Count == 2, "OCR image list selection did not select the recognized image");
+            OperationBox.SelectedIndex = 0;
+            RequireUi(_inputs.Count == 2 && InputList.SelectedPath == webp, "Returning to image conversion lost selected files");
+            InputList_RemoveRequested(InputList, new InputPathEventArgs(landscape));
+            RequireUi(_inputs.Count == 1 && File.Exists(landscape), "Removing a queued item changed the source file");
+            OperationBox.SelectedIndex = 1;
+            await _inputSyncTask;
+            checks.Add("Visible tool buttons, shared OCR/image-conversion batch, active-image selection and file-only queue removal");
+            checks.AddRange(await OcrWorkspaceVerification.RunAsync(OcrEditor,
+                Path.Combine(Path.GetFullPath(fixtures), "ocr-zh-en.png"), Path.Combine(output, "ocr"), SaveScreenshot));
+            RootLayout.RequestedTheme = ElementTheme.Dark;
+            await Task.Delay(200);
+            await SaveScreenshot(Path.Combine(output, "ocr-dark.png"));
+            RootLayout.RequestedTheme = ElementTheme.Light;
+
             Navigation.SelectedItem = Navigation.MenuItems[4];
             SelectCategory("files");
             RequireUi(SearchScopeBox.SelectedItem is SearchScope { Root: null, IsFolder: false }, "Default search scope is not all local drives");
@@ -98,6 +121,16 @@ public sealed partial class MainWindow
                 RequireUi(_searchRows.Count(x => x.Thumbnail != null) <= 32, "Offscreen decoded thumbnails accumulated while scrolling");
             }
             checks.Add("160-image virtualized list: scrolling releases offscreen decoded thumbnails and recycled rows load correct previews");
+            RootLayout.RequestedTheme = ElementTheme.Light;
+            Navigation.SelectedItem = Navigation.MenuItems[5];
+            await Uninstaller.LoadAsync();
+            await Uninstaller.VerifyFixtureAsync(Path.Combine(output, "software-fixtures"));
+            await Task.Delay(200);
+            await SaveScreenshot(Path.Combine(output, "software.png"));
+            RootLayout.RequestedTheme = ElementTheme.Dark;
+            await Task.Delay(200);
+            await SaveScreenshot(Path.Combine(output, "software-dark.png"));
+            checks.Add("Uninstaller real UI: search/details, absent uninstaller, retained removed-app snapshot, cancel/confirm fake uninstall, selected-only fixture cleanup and hash-verified backup restore; no real uninstall or machine-registry writes");
             await File.WriteAllTextAsync(Path.Combine(output, "ui-verification.json"), JsonSerializer.Serialize(new
                 { Passed = true, BaseDirectory = AppContext.BaseDirectory, Checks = checks }, new JsonSerializerOptions { WriteIndented = true }));
             return 0;

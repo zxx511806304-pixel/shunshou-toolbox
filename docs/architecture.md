@@ -3,7 +3,7 @@
 ## 结构
 
 - `Shunshou.App`：WinUI 3 原生窗口、导航、选择文件、任务进度与取消、错误/结果展示。通过服务 API 调用核心，后续改 UI 不必重写转换引擎。
-- `Shunshou.Core`：按领域拆分 CompressionService、ImageService、PdfService、OcrService、MediaService、FileService。每次任务接受 CancellationToken；后台执行；保留原输入。
+- `Shunshou.Core`：按领域拆分 CompressionService、ImageService、PdfService、OcrService、MediaService、FileService、UninstallService。处理服务接受 CancellationToken；转换保留原输入，卸载和重命名仅在用户明确操作后修改。
 - `Shunshou.SmokeTests`：生成测试资料并验证真实 ZIP、PNG、PDF、DOCX、PPTX、音视频、文件名和内容。结果写入独立 artifacts 目录。
 - `runtime`：构建阶段获取的 FFmpeg 和 OCR 模型，不提交 Git。随便携包完整分发，应用运行时不下载。
 - `scripts`：可重复获取组件和制作便携包的入口。锁定来源、版本、SHA256；更新依赖需要重新测试。
@@ -29,6 +29,16 @@ ZIP 解压拒绝路径穿越、重复冲突和链接，预览版每次最多 20,
 `FileSearch.cs` 提供磁盘发现和多范围名称遍历；不建立常驻服务，不要求管理员权限。搜索在后台线程运行，按批次报告结果、进度、取消和截断。搜索列表独立占据有限高度，使用 WinUI ListView 的虚拟化；没有嵌套在工具表单的 ScrollViewer 中。
 
 `SearchPreviewService` 使用 [Windows 缩略图接口](https://learn.microsoft.com/en-us/uwp/api/windows.storage.storagefile.getthumbnailasync?view=winrt-26100)，本地图片缺少系统缩略图时由内置 Skia 解码。图像尺寸、有界编码缓存和并发分别限制；UI 只为可见行保留解码位图。非图像不调用文档应用生成预览，云占位文件、远程路径及目录链接不触发内容取回。选中预览拥有独立取消标记，快速切换不会被旧请求覆盖。
+
+## 0.2.0 工具工作区与卸载
+
+工具按钮直接展开；六类导航中新增软件卸载。通用输入队列与搜索结果使用有界、虚拟化的列表，避免放入外层 ScrollViewer。`InputSelectionWorkspace` 只保存内存草稿；图片转换与 OCR 共用图片批次，单输入工具只带入当前明确选择，其他文件仍在原工具保留。
+
+`OcrWorkspace` 是独立的图片/文字编辑控件，识别 API 不负责自动保存。粘贴图片写入该会话私有临时目录，已接受的图片在会话结束前保留以供批次切换，退出只清理自身创建的图片。图像预览有尺寸上限，识别仍使用原图；TIFF 第一页通过现有 Magick 库有界解码后传入 OCR。编辑器内的 Ctrl+V 保持文本粘贴行为。
+
+`UninstallService` 与 `IUninstallPlatform` 分离：真实平台枚举 HKCU/HKLM 卸载项和当前用户可卸载 Windows 包，测试平台替代注册表和进程执行。界面拥有应用选择与每项清理确认；提升权限只新开本程序窗口并选择对应软件，不自动执行动作。软件信息在运行卸载器前重新核对；卸载后保留已选择的软件快照用于残留扫描。
+
+每次扫描保存候选项身份、目录结构、文件哈希和注册表快照。清理只接受当前服务生成的扫描对象及其中的条目 ID；全部备份成功后才删除选中内容。删除按已验证的文件执行，不用递归删除扫除新出现的未知文件。恢复仅从本程序备份目录读取带完整性验证的记录，不覆盖后来变化的内容。取消等待不杀死正在工作的第三方卸载器。
 
 ## 下一轮迭代
 
