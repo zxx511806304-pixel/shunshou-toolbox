@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Shunshou.DesktopIntegration;
 
@@ -100,7 +102,9 @@ internal static class Program
                 "Upgraded shortcut target and icon both move to the English executable.");
             Assert(Path.GetFileName(result.ShortcutPath) == "顺手工具箱.lnk", "User-facing desktop display name remains Chinese.");
 
-            EditFixtureShortcut(result.ShortcutPath!, link => link.IconLocation = Path.Combine(directory, "顺手工具箱.exe") + ",0");
+            EditFixtureShortcut(result.ShortcutPath!, iconPath: Path.Combine(directory, "顺手工具箱.exe"));
+            Assert(DesktopShortcutService.ReadShortcut(result.ShortcutPath!).IconPath == Path.Combine(directory, "顺手工具箱.exe"),
+                "Unicode shortcut fixture preserves the intentionally stale Chinese icon path.");
             Assert(service.EnsureShortcut(directory).Status == ShortcutStatus.Updated, "Owned shortcut with stale icon is repaired even when its target is already current.");
             Assert(DesktopShortcutService.ReadShortcut(result.ShortcutPath!).IconPath == upgraded.TargetPath, "Stale icon location is replaced by current executable icon.");
 
@@ -129,7 +133,7 @@ internal static class Program
         Assert(File.ReadAllBytes(path).SequenceEqual(unrelated), "Unrelated shortcut bytes are preserved exactly.");
         File.Delete(path);
         Assert(service.EnsureShortcut(directory, explicitRequest: true).Status == ShortcutStatus.Created, "Owned shortcut fixture is available for unrelated ownership change.");
-        EditFixtureShortcut(path, link => link.Description = "Unrelated application shortcut");
+        EditFixtureShortcut(path, description: "Unrelated application shortcut");
         var unrelatedLink = File.ReadAllBytes(path);
         Assert(service.EnsureShortcut(directory, explicitRequest: true).Status == ShortcutStatus.UnrelatedShortcut, "A valid shell link without our ownership description is refused.");
         Assert(File.ReadAllBytes(path).SequenceEqual(unrelatedLink), "Valid unrelated shell link is preserved byte-for-byte during migration.");
@@ -289,23 +293,45 @@ internal static class Program
         return directory;
     }
 
-    private static void EditFixtureShortcut(string path, Action<dynamic> edit)
+    private static void EditFixtureShortcut(string path, string? description = null, string? iconPath = null)
     {
-        // Use the COM object directly; no script host, shell process, or user application is started.
-        var shellType = Type.GetTypeFromProgID("WScript.Shell") ?? throw new InvalidOperationException("Windows shortcut COM server unavailable.");
-        dynamic shell = Activator.CreateInstance(shellType)!;
-        object? shortcut = null;
+        // IShellLinkW and IPersistFile keep the fixture path and icon Unicode on every Windows locale.
+        // The fixture intentionally retains its Chinese .lnk filename and legacy Chinese icon path.
+        var shortcut = (IFixtureShellLinkW)new FixtureShellLink();
         try
         {
-            shortcut = shell.CreateShortcut(path);
-            edit(shortcut);
-            ((dynamic)shortcut).Save();
+            ((IPersistFile)shortcut).Load(path, 0);
+            if (description is not null) shortcut.SetDescription(description);
+            if (iconPath is not null) shortcut.SetIconLocation(iconPath, 0);
+            ((IPersistFile)shortcut).Save(path, true);
         }
-        finally
-        {
-            if (shortcut is not null) Marshal.FinalReleaseComObject(shortcut);
-            Marshal.FinalReleaseComObject((object)shell);
-        }
+        finally { Marshal.FinalReleaseComObject(shortcut); }
+    }
+
+    [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+    private class FixtureShellLink { }
+
+    [ComImport, Guid("000214F9-0000-0000-C000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IFixtureShellLinkW
+    {
+        void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int capacity, nint findData, uint flags);
+        void GetIDList(out nint itemIdList);
+        void SetIDList(nint itemIdList);
+        void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder description, int capacity);
+        void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string description);
+        void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder directory, int capacity);
+        void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string directory);
+        void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder arguments, int capacity);
+        void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string arguments);
+        void GetHotkey(out short hotkey);
+        void SetHotkey(short hotkey);
+        void GetShowCmd(out int command);
+        void SetShowCmd(int command);
+        void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int capacity, out int index);
+        void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string path, int index);
+        void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string path, uint reserved);
+        void Resolve(nint window, uint flags);
+        void SetPath([MarshalAs(UnmanagedType.LPWStr)] string path);
     }
 
     private static void Assert(bool condition, string message)

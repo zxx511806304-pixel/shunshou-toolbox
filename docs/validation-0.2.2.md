@@ -27,6 +27,8 @@
 - 实际启动升级后英文 EXE，内置中英文 OCR、PNG→WebP、PDF 栅格化/可编辑 DOCX、ZIP、WAV→MP3 及解码检查通过。证据：`artifacts/setup-v022-launched/engines/package-verification.json`。
 - 人工查看浅色主页、深色 OCR、解压完成界面及实际 EXE 提取的小图标，确认新图标与英文默认路径可见，无裁切或透明背景方块。
 
+首轮 GitHub Windows 2025 检查中，构建 0 警告/0 错误、全部转换组及 27 项部署测试通过；桌面测试夹具使用 WScript.Shell 修改中文快捷方式时在英文系统失败。夹具改用 Unicode `IShellLinkW`/`IPersistFile`，继续使用中文路径验证。生产快捷方式和 Setup 原本已使用 Unicode 接口，本次修正只影响测试，不改变上述发布包。
+
 源码和单独的 `dist/validation-0.2.2.md` 记录最终结果；包内报告是构建时的检查快照，不回填已验证 ZIP/EXE 以保持哈希稳定。GitHub CI 使用同一源码重新构建，产物时间戳及哈希可与本地不同。
 
 ## 边界
