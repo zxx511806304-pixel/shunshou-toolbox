@@ -11,6 +11,7 @@ namespace Shunshou.Core;
 public sealed class OcrService
 {
     private readonly string modelDirectory;
+    internal bool HasBundledModels => File.Exists(Path.Combine(modelDirectory, "v6", "PP-OCRv6_rec_small.onnx"));
     public string EngineDescription { get; private set; } = "内置中英文 OCR";
 
     public OcrService(string? modelDirectory = null)
@@ -19,6 +20,22 @@ public sealed class OcrService
     }
 
     public async Task<string> RecognizeAsync(string imagePath, CancellationToken ct = default)
+    {
+        var result = await RecognizeLayoutAsync(imagePath, ct).ConfigureAwait(false);
+        if (result.Blocks.Count == 0) throw new InvalidOperationException("没有识别到文字，请检查图片中是否包含清晰文字。");
+        return result.Text;
+    }
+
+    /// <summary>Returns text, source coordinates and confidence. A blank image returns no blocks.</summary>
+    public async Task<OcrImageResult> RecognizeLayoutAsync(string imagePath, CancellationToken ct = default)
+    {
+        using var session = CreateSession();
+        return await RecognizeLayoutAsync(imagePath, session, ct).ConfigureAwait(false);
+    }
+
+    internal OcrSession CreateSession() => new(modelDirectory);
+
+    internal async Task<OcrImageResult> RecognizeLayoutAsync(string imagePath, OcrSession session, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         if (!File.Exists(imagePath)) throw new FileNotFoundException("找不到需要识别的图片。", imagePath);
@@ -29,7 +46,7 @@ public sealed class OcrService
         if (File.Exists(Path.Combine(modelDirectory, "v6", "PP-OCRv6_rec_small.onnx")))
         {
             EngineDescription = "内置 PP-OCRv6 中英文模型（离线）";
-            return await RecognizeWithRapidAsync(imagePath, ct).ConfigureAwait(false);
+            return await RecognizeWithRapidAsync(imagePath, session, ct).ConfigureAwait(false);
         }
         EngineDescription = "Windows 本机 OCR 语言组件（离线后备）";
         return await RecognizeWithWindowsAsync(imagePath, ct).ConfigureAwait(false);
@@ -100,27 +117,16 @@ public sealed class OcrService
         }
     }
 
-    private async Task<string> RecognizeWithRapidAsync(string imagePath, CancellationToken ct)
+    private async Task<OcrImageResult> RecognizeWithRapidAsync(string imagePath, OcrSession session, CancellationToken ct)
     {
-        var models = RapidOcrNet.RapidOcrModelSet.PPOCRv6Small with
-        {
-            DetModelPath = Path.Combine(modelDirectory, "v6", "PP-OCRv6_det_small.onnx"),
-            RecModelPath = Path.Combine(modelDirectory, "v6", "PP-OCRv6_rec_small.onnx"),
-            ClsModelPath = Path.Combine(modelDirectory, "v5", "ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx"),
-            KeysPath = Path.Combine(modelDirectory, "v6", "ppocrv6_dict.txt")
-        };
-        foreach (string model in new[] { models.DetModelPath, models.RecModelPath, models.ClsModelPath, models.KeysPath })
-            if (!File.Exists(model)) throw new InvalidOperationException("内置 OCR 文件不完整，请重新解压完整软件包。缺少：" + Path.GetFileName(model));
-
         using var codec = SKCodec.Create(imagePath) ?? throw new InvalidDataException("无法读取需要识别的图片。");
         if (codec.Info.Width <= 0 || codec.Info.Height <= 0 || (long)codec.Info.Width * codec.Info.Height > 100_000_000)
             throw new InvalidOperationException("图片超过一亿像素，请裁剪需要识别的区域或分批识别。");
         ct.ThrowIfCancellationRequested();
         using var bitmap = SKBitmap.Decode(codec) ?? throw new InvalidDataException("无法解码需要识别的图片。");
-        using var engine = new RapidOcrNet.RapidOcr();
-        await Task.Run(() => engine.InitModels(models, numThread: Math.Clamp(Environment.ProcessorCount / 2, 1, 4)), ct).ConfigureAwait(false);
+        var engine = await session.GetEngineAsync(ct).ConfigureAwait(false);
         const int limit = 2600, overlap = 200, step = limit - overlap;
-        var lines = new List<(double Y, double X, string Text)>();
+        var lines = new List<TextLayoutBlock>();
         for (int top = 0; top < bitmap.Height; top += step)
         {
             ct.ThrowIfCancellationRequested();
@@ -135,17 +141,42 @@ public sealed class OcrService
                 double center = block.BoxPoints.Average(p => p.Y);
                 if (top > 0 && center < overlap / 2.0) continue;
                 if (top + height < bitmap.Height && center >= step + overlap / 2.0) continue;
-                lines.Add((top + center, block.BoxPoints.Min(p => p.X), block.Text.Trim()));
+                double x = Math.Max(0, block.BoxPoints.Min(p => p.X));
+                double y = Math.Max(0, block.BoxPoints.Min(p => p.Y));
+                double right = Math.Min(bitmap.Width, block.BoxPoints.Max(p => p.X));
+                double bottom = Math.Min(height, block.BoxPoints.Max(p => p.Y));
+                double? confidence = block.CharScores is { Length: > 0 } scores ? scores.Average(v => (double)v) : null;
+                lines.Add(new TextLayoutBlock(block.Text.Trim(), x, top + y, right - x, bottom - y, Confidence: confidence));
             }
             if (top + height == bitmap.Height) break;
         }
         ct.ThrowIfCancellationRequested();
-        string text = string.Join(Environment.NewLine, lines.OrderBy(l => Math.Round(l.Y / 12)).ThenBy(l => l.X).Select(l => l.Text));
-        if (string.IsNullOrWhiteSpace(text)) throw new InvalidOperationException("没有识别到文字，请检查图片中是否包含清晰文字。");
-        return text;
+        // Retry only a bounded number of uncertain, small text crops. The v6
+        // preset already resizes small inputs; cropping avoids whole-image caps
+        // discarding small letters and keeps normal screenshots fast.
+        foreach (int index in Enumerable.Range(0, lines.Count).Where(i => lines[i].Confidence is < 0.8 && lines[i].Height < 48).Take(6))
+        {
+            ct.ThrowIfCancellationRequested();
+            var original = lines[index];
+            var bounds = new SKRectI(Math.Max(0, (int)original.X - 8), Math.Max(0, (int)original.Y - 8),
+                Math.Min(bitmap.Width, (int)Math.Ceiling(original.Right) + 8), Math.Min(bitmap.Height, (int)Math.Ceiling(original.Bottom) + 8));
+            if ((long)bounds.Width * bounds.Height > 1_000_000) continue;
+            using var crop = new SKBitmap();
+            if (!bitmap.ExtractSubset(crop, bounds)) continue;
+            var retry = await engine.DetectAsync(crop, RapidOcrNet.RapidOcrOptions.PPOCRv6, null, ct).ConfigureAwait(false);
+            // A single matching line is a conservative replacement; never join
+            // unrelated nearby lines or treat another engine's score as comparable.
+            if (retry.TextBlocks.Length != 1) continue;
+            var candidate = retry.TextBlocks[0];
+            double score = candidate.CharScores is { Length: > 0 } values ? values.Average(v => (double)v) : 0;
+            if (score >= (original.Confidence ?? 0) + 0.07 && candidate.Text.Length >= original.Text.Length * 0.7
+                && candidate.Text.Length <= original.Text.Length * 1.3)
+                lines[index] = original with { Text = candidate.Text.Trim(), Confidence = score };
+        }
+        return new OcrImageResult(bitmap.Width, bitmap.Height, TextLayout.Merge(lines));
     }
 
-    private static async Task<string> RecognizeWithWindowsAsync(string imagePath, CancellationToken ct)
+    private static async Task<OcrImageResult> RecognizeWithWindowsAsync(string imagePath, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         if (!File.Exists(imagePath)) throw new FileNotFoundException("找不到需要识别的图片。", imagePath);
@@ -171,7 +202,7 @@ public sealed class OcrService
         // Boundary ownership by each line's midpoint prevents duplicate lines from the overlap.
         uint overlap = Math.Min(160U, limit / 8);
         uint step = limit - overlap;
-        var lines = new List<(double Y, string Text)>();
+        var lines = new List<TextLayoutBlock>();
         for (uint top = 0; top < decoder.PixelHeight; top += step)
         {
             ct.ThrowIfCancellationRequested();
@@ -191,15 +222,14 @@ public sealed class OcrService
                 string recognized = SelectLineText(line, englishResult);
                 // Windows Chinese OCR inserts word-boundary spaces between individual Han characters.
                 recognized = Regex.Replace(recognized, @"(?<=[\u3400-\u9fff])[ \t]+(?=[\u3400-\u9fff])", "");
-                lines.Add((top + center, recognized.Trim()));
+                double x = line.Words.Min(w => w.BoundingRect.X), y = line.Words.Min(w => w.BoundingRect.Y);
+                double right = line.Words.Max(w => w.BoundingRect.Right), bottom = line.Words.Max(w => w.BoundingRect.Bottom);
+                lines.Add(new TextLayoutBlock(recognized.Trim(), x, top + y, right - x, bottom - y));
             }
             if (top + height == decoder.PixelHeight) break;
         }
 
-        var text = string.Join(Environment.NewLine, lines.OrderBy(x => x.Y).Select(x => x.Text));
-        if (string.IsNullOrWhiteSpace(text))
-            throw new InvalidOperationException($"没有识别到文字。当前使用 {engine.RecognizerLanguage.DisplayName} 识别组件；请检查文字清晰度及系统中安装的 OCR 语言。");
-        return text;
+        return new OcrImageResult((int)decoder.PixelWidth, (int)decoder.PixelHeight, TextLayout.Merge(lines));
     }
 
     private static string SelectLineText(OcrLine primary, OcrResult? english)
@@ -222,4 +252,32 @@ public sealed class OcrService
         int candidateLatin = candidate.Text.Count(c => c is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9');
         return distance <= height * 0.65 && candidateLatin >= latin ? candidate.Text : primary.Text;
     }
+}
+
+/// <summary>One batch owns one lazy model session. No process-wide retained model.</summary>
+internal sealed class OcrSession(string directory) : IDisposable
+{
+    private RapidOcrNet.RapidOcr? engine;
+    public async Task<RapidOcrNet.RapidOcr> GetEngineAsync(CancellationToken ct)
+    {
+        if (engine is not null) return engine;
+        var models = RapidOcrNet.RapidOcrModelSet.PPOCRv6Small with
+        {
+            DetModelPath = Path.Combine(directory, "v6", "PP-OCRv6_det_small.onnx"),
+            RecModelPath = Path.Combine(directory, "v6", "PP-OCRv6_rec_small.onnx"),
+            ClsModelPath = Path.Combine(directory, "v5", "ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx"),
+            KeysPath = Path.Combine(directory, "v6", "ppocrv6_dict.txt")
+        };
+        foreach (string model in new[] { models.DetModelPath, models.RecModelPath, models.ClsModelPath, models.KeysPath })
+            if (!File.Exists(model)) throw new InvalidOperationException("内置 OCR 文件不完整，请重新解压完整软件包。缺少：" + Path.GetFileName(model));
+        var created = new RapidOcrNet.RapidOcr();
+        try
+        {
+            await Task.Run(() => created.InitModels(models, numThread: Math.Clamp(Environment.ProcessorCount / 2, 1, 4)), ct).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
+            return engine = created;
+        }
+        catch { created.Dispose(); throw; }
+    }
+    public void Dispose() { engine?.Dispose(); engine = null; }
 }

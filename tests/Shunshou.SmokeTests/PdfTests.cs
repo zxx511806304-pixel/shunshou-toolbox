@@ -8,6 +8,7 @@ using PdfSharp.Drawing;
 using Shunshou.Core;
 using W = DocumentFormat.OpenXml.Wordprocessing;
 using A = DocumentFormat.OpenXml.Drawing;
+using P = DocumentFormat.OpenXml.Presentation;
 
 namespace Shunshou.SmokeTests;
 
@@ -86,6 +87,8 @@ public static class PdfTests
             Console.WriteLine($"PASS PDF: 扫描件 → {format} 默认随包 OCR / 中英文真文本 / OpenXmlValidator");
         }
 
+        await VerifyMixedAndBlankPagesAsync(service, folder);
+
         var split = await service.SplitAsync(input, Path.Combine(folder, "拆分"));
         Check(split.Count == 3, "拆分应输出 3 个 PDF");
         Check(Path.GetFileName(split[0]) == "中英文示例_page001.pdf", "拆分结果仅附加英文页码后缀");
@@ -120,6 +123,87 @@ public static class PdfTests
         ValidatePngPayload(hundredLong.Single(), hundredHeader.Width, hundredHeader.Height);
         Console.WriteLine($"PASS PDF: 100 页 A4 / 150 DPI，长图 {hundredHeader.Width} × {hundredHeader.Height}，耗时 {watch.Elapsed.TotalSeconds:F1} 秒，PNG CRC 和完整解压验证通过");
     }
+
+    private static async Task VerifyMixedAndBlankPagesAsync(PdfService service, string folder)
+    {
+        string nativePath = Path.Combine(folder, "原生结构.pdf"), mixedPath = Path.Combine(folder, "混合文字图片含空页.pdf");
+        var builder = new UglyToad.PdfPig.Writer.PdfDocumentBuilder();
+        var font = builder.AddStandard14Font(UglyToad.PdfPig.Fonts.Standard14Fonts.Standard14Font.Helvetica);
+        var first = builder.AddPage(UglyToad.PdfPig.Content.PageSize.A4);
+        first.AddText("NATIVE HEADER", 18, new UglyToad.PdfPig.Core.PdfPoint(40, 790), font);
+        first.AddText("DUPLICATE LABEL", 12, new UglyToad.PdfPig.Core.PdfPoint(40, 750), font);
+        first.AddText("DUPLICATE LABEL", 12, new UglyToad.PdfPig.Core.PdfPoint(40, 750), font);
+        first.AddText("REPEATED LABEL", 12, new UglyToad.PdfPig.Core.PdfPoint(40, 725), font);
+        first.AddText("REPEATED LABEL", 12, new UglyToad.PdfPig.Core.PdfPoint(40, 705), font);
+        first.AddText("Native paragraph first", 10, new UglyToad.PdfPig.Core.PdfPoint(40, 670), font);
+        first.AddText("continued line.", 10, new UglyToad.PdfPig.Core.PdfPoint(40, 660), font);
+        // This text layer is covered by the later image, as in an OCR'ed scan.
+        // Its matching visible image text must not be exported a second time.
+        first.AddText("SHUNSHOU TOOLBOX", 22, new UglyToad.PdfPig.Core.PdfPoint(70, 583), font);
+        first.AddText("NATIVE FOOTER", 12, new UglyToad.PdfPig.Core.PdfPoint(40, 100), font);
+        builder.AddPage(UglyToad.PdfPig.Content.PageSize.A4);
+        var last = builder.AddPage(UglyToad.PdfPig.Content.PageSize.A4);
+        last.AddText("LAST PAGE TEXT", 18, new UglyToad.PdfPig.Core.PdfPoint(40, 750), font);
+        last.AddText("LEFT FIRST", 12, new UglyToad.PdfPig.Core.PdfPoint(40, 700), font);
+        last.AddText("LEFT SECOND", 12, new UglyToad.PdfPig.Core.PdfPoint(40, 680), font);
+        last.AddText("RIGHT FIRST", 12, new UglyToad.PdfPig.Core.PdfPoint(300, 700), font);
+        last.AddText("RIGHT SECOND", 12, new UglyToad.PdfPig.Core.PdfPoint(300, 680), font);
+        await File.WriteAllBytesAsync(nativePath, builder.Build());
+        using (var document = PdfReader.Open(nativePath, PdfDocumentOpenMode.Modify))
+        {
+            using (var graphics = XGraphics.FromPdfPage(document.Pages[0], XGraphicsPdfPageOptions.Append))
+            using (var image = XImage.FromFile(Path.Combine(AppContext.BaseDirectory, "Fixtures", "ocr-zh-en.png")))
+                graphics.DrawImage(image, 40, 200, 515, 515.0 * image.PixelHeight / image.PixelWidth);
+            document.Save(mixedPath);
+        }
+        byte[] hash = SHA256.HashData(await File.ReadAllBytesAsync(mixedPath));
+        foreach (string format in new[] { "docx", "pptx" })
+        {
+            string output = await service.ExportEditableAsync(mixedPath, Path.Combine(folder, "混合页结果"), format);
+            using OpenXmlPackage package = format == "docx" ? WordprocessingDocument.Open(output, false) : PresentationDocument.Open(output, false);
+            var errors = new OpenXmlValidator().Validate(package).ToArray();
+            Check(errors.Length == 0, $"混合页 {format} 结构错误：" + string.Join("; ", errors.Select(x => x.Description)));
+            string text;
+            if (package is WordprocessingDocument word)
+            {
+                var document = word.MainDocumentPart!.Document!;
+                text = string.Concat(document.Descendants<W.Text>().Select(x => x.Text));
+                Check(document.Descendants<W.PageBreakBefore>().Count() == 2, "Word 必须保留包含空页的三页分隔。");
+                Check(document.Descendants<W.Paragraph>().Any(p => Normalize(p.InnerText).Contains("Nativeparagraphfirstcontinuedline.")),
+                    "相邻的正文换行应重建为一个可编辑段落。");
+            }
+            else
+            {
+                var presentation = ((PresentationDocument)package).PresentationPart!;
+                var slides = presentation.Presentation!.SlideIdList!.Elements<P.SlideId>()
+                    .Select(id => ((SlidePart)presentation.GetPartById(id.RelationshipId!)).Slide!).ToArray();
+                Check(slides.Length == 3 && !slides[1].Descendants<A.Text>().Any(), "PPT 应一页对应一页，并保留中间空白页。");
+                Check(presentation.Presentation.SlideSize!.Cy!.Value > presentation.Presentation.SlideSize.Cx!.Value,
+                    "竖向 A4 PDF 应保留竖向幻灯片比例。");
+                text = string.Concat(slides.SelectMany(s => s.Descendants<A.Text>()).Select(x => x.Text));
+                var header = slides[0].Descendants<P.Shape>().Single(s => s.InnerText.Contains("NATIVE HEADER"));
+                var pictureText = slides[0].Descendants<P.Shape>().First(s => s.InnerText.Contains("文字识别"));
+                Check(header.Descendants<A.Offset>().Single().Y!.Value < pictureText.Descendants<A.Offset>().Single().Y!.Value,
+                    "PPT 中原生页眉与识别正文应保持上下位置关系。");
+            }
+            string normalized = Normalize(text);
+            Check(normalized.Contains("NATIVEHEADER") && normalized.Contains("文字识别") && normalized.Contains("Hello12345")
+                && normalized.Contains("LASTPAGETEXT"), $"混合页不能因已有页眉漏掉截图正文或末页：{text}");
+            Check(Count(normalized, "DUPLICATELABEL") == 1, "重复绘制的同位置原生文字应去重。");
+            Check(Count(normalized, "REPEATEDLABEL") == 2, "不同位置的真实重复内容必须保留。");
+            Check(Count(normalized, "SHUNSHOUTOOLBOX") == 1, "同一区域的原生文字层与截图 OCR 不应重复导出。");
+            Check(normalized.IndexOf("LEFTSECOND", StringComparison.Ordinal) < normalized.IndexOf("RIGHTFIRST", StringComparison.Ordinal),
+                "两栏文字应先读完左栏，再读右栏。");
+            Check(normalized.IndexOf("NATIVEHEADER", StringComparison.Ordinal) < normalized.IndexOf("文字识别", StringComparison.Ordinal)
+                && normalized.IndexOf("文字识别", StringComparison.Ordinal) < normalized.IndexOf("NATIVEFOOTER", StringComparison.Ordinal),
+                "原生文字和图片文字需要合并成阅读顺序。");
+        }
+        byte[] finalHash = SHA256.HashData(await File.ReadAllBytesAsync(mixedPath));
+        Check(hash.SequenceEqual(finalHash), "混合页转换不得修改原文件。");
+        Console.WriteLine("PASS PDF: 混合页补 OCR / 位置去重 / 重复内容保留 / 段落重建 / 空白页 / PPT 原比例文本框");
+    }
+
+    private static int Count(string text, string value) => (text.Length - text.Replace(value, "", StringComparison.Ordinal).Length) / value.Length;
 
     private static void CreatePdf(string path, int pages, bool encrypt)
     {

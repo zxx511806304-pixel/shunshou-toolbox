@@ -21,7 +21,7 @@ public sealed partial class MainWindow
 
     private void InitializeWorkspaces(IntPtr hwnd)
     {
-        OcrEditor.HostWindowHandle = Uninstaller.HostWindowHandle = hwnd;
+        OcrEditor.HostWindowHandle = Uninstaller.HostWindowHandle = Recovery.HostWindowHandle = hwnd;
         InputList.MaximumListHeight = 140;
         OcrInputList.MaximumListHeight = 100;
         foreach (var list in new[] { InputList, OcrInputList })
@@ -46,6 +46,8 @@ public sealed partial class MainWindow
         };
         Uninstaller.BusyChanged += (_, busy) => SetBusy(busy);
         Uninstaller.RequestElevation += (_, appId) => OpenAdministratorWindow(appId);
+        Recovery.BusyChanged += (_, busy) => SetBusy(busy);
+        Recovery.RequestElevation += (_, _) => OpenRecoveryAdministratorWindow();
         var paste = new KeyboardAccelerator { Key = VirtualKey.V, Modifiers = VirtualKeyModifiers.Control };
         paste.Invoked += async (_, args) =>
         {
@@ -75,7 +77,7 @@ public sealed partial class MainWindow
         OperationButtons.ColumnDefinitions.Clear();
         OperationButtons.RowDefinitions.Clear();
         string[] operations = Operations[_category];
-        int columns = Math.Min(3, operations.Length);
+        int columns = operations.Length == 4 ? 4 : Math.Min(3, operations.Length);
         for (int i = 0; i < columns; i++) OperationButtons.ColumnDefinitions.Add(new ColumnDefinition());
         for (int i = 0; i < (operations.Length + columns - 1) / columns; i++) OperationButtons.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         for (int i = 0; i < operations.Length; i++)
@@ -104,7 +106,7 @@ public sealed partial class MainWindow
 
     private void RestoreInputDraft()
     {
-        if (_category == "software") return;
+        if (_category == "software" || Operation == "误删恢复") return;
         var draft = _inputWorkspace.SwitchTo(CurrentInputTool, _inputs, _activeInputPath);
         _inputDraftMessage = draft.Message;
         _inputs.Clear();
@@ -216,10 +218,23 @@ public sealed partial class MainWindow
     {
         try
         {
-            var start = new ProcessStartInfo(Environment.ProcessPath ?? throw new InvalidOperationException("无法找到程序路径。"))
-            { UseShellExecute = true, Verb = "runas", WorkingDirectory = AppContext.BaseDirectory };
+            var start = new ProcessStartInfo(AppPaths.LauncherPath)
+            { UseShellExecute = true, Verb = "runas", WorkingDirectory = AppPaths.InstallationDirectory };
             start.ArgumentList.Add("--software");
             start.ArgumentList.Add("--select-app=" + appId);
+            Process.Start(start);
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223) { }
+        catch (Exception ex) { ShowError(ex.Message); }
+    }
+
+    private void OpenRecoveryAdministratorWindow()
+    {
+        try
+        {
+            var start = new ProcessStartInfo(AppPaths.LauncherPath)
+            { UseShellExecute = true, Verb = "runas", WorkingDirectory = AppPaths.InstallationDirectory };
+            start.ArgumentList.Add("--recovery");
             Process.Start(start);
         }
         catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223) { }

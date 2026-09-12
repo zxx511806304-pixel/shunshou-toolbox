@@ -156,7 +156,10 @@ internal static class SetupVerification
             Require(!installed.WasUpdate && installed.PreviousBackupDirectory is null, "Initial deployment result");
             await VerifyFilesAsync(fresh);
             Require(PackageIdentity.GetExecutablePath(fresh) == Path.Combine(fresh, PackageIdentity.ExecutableName)
-                && File.Exists(Path.Combine(fresh, "ShunshouToolbox.pri")), "English apphost and matching WinUI resources");
+                && File.Exists(Path.Combine(fresh, "app", "Shunshou.App.pri")), "Native launcher and private WinUI resources");
+            Require(Directory.EnumerateFileSystemEntries(fresh).Count() == 4 &&
+                Directory.Exists(Path.Combine(fresh, "app")) && Directory.Exists(Path.Combine(fresh, "docs")),
+                "Fresh package has a clean four-entry root");
             checks.Add("Fresh extraction: every managed file matches the embedded manifest");
 
             var locks = Path.Combine(output, "locks");
@@ -231,6 +234,12 @@ internal static class SetupVerification
                 Require(!File.Exists(Path.Combine(target, PackageIdentity.LegacyExecutableName)), "Obsolete managed Chinese entry is absent from current folder");
                 Require(File.Exists(Path.Combine(updated.PreviousBackupDirectory!, PackageIdentity.LegacyExecutableName)), "Previous Chinese entry remains in retained backup");
                 checks.Add("Legacy Chinese entry → English apphost upgrade repairs the existing Chinese desktop shortcut");
+            }
+            if (File.Exists(Path.Combine(updated.PreviousBackupDirectory!, "Shunshou.App.dll")))
+            {
+                Require(!File.Exists(Path.Combine(target, "Shunshou.App.dll")) &&
+                    File.Exists(Path.Combine(target, "app", "Shunshou.App.dll")), "Flat runtime moves under app after update");
+                checks.Add("Flat legacy runtime moves under app while the full previous layout remains in backup");
             }
             checks.Add("Full old ZIP → embedded version update, exact settings/output/history/key preservation and retained backup");
             checks.Add("Desktop and registration are isolated fixtures; no real user desktop/registry writes or program launch");

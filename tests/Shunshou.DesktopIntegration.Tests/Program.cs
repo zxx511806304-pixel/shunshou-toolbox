@@ -20,9 +20,12 @@ internal static class Program
         }
         if (args.Length == 4 && args[0] == "--lease-probe")
         {
-            using var lease = args[3] == "reader"
-                ? UpdateCoordination.AcquireApplicationLease(args[1], args[2])
-                : UpdateCoordination.AcquireUpdateLease(args[1], args[2]);
+            using var lease = args[3] switch
+            {
+                "reader" => UpdateCoordination.AcquireApplicationLease(args[1], args[2]),
+                "existing-reader" => UpdateCoordination.AcquireExistingApplicationLease(args[1], args[2]),
+                _ => UpdateCoordination.AcquireUpdateLease(args[1], args[2])
+            };
             return lease is null ? 77 : 0;
         }
         var root = Path.GetFullPath(args.FirstOrDefault() ?? "artifacts/desktop-integration");
@@ -33,11 +36,13 @@ internal static class Program
         {
             ShortcutLifecycle(root, cases);
             LegacyPackageMigration(root, cases);
+            CleanLayoutMigration(root, cases);
             PreserveUnrelated(root, cases);
             ExplicitOptOut(root, cases);
             RejectInvalidPackage(root, cases);
             RegistrationFailureNonfatal(root, cases);
             SharedLeases(root, cases);
+            ExistingRecoveryLeases(root, cases);
             RunningProcessDiscovery(root, cases);
             var report = new { Passed = true, Cases = cases, OutputDirectory = root, RealDesktopWrites = 0, RealRegistryWrites = 0 };
             File.WriteAllText(Path.Combine(root, "verification.json"), JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
@@ -140,6 +145,25 @@ internal static class Program
         cases.Add("Unrelated existing desktop shortcut preserved byte-for-byte");
     }
 
+    private static void CleanLayoutMigration(string root, List<string> cases)
+    {
+        var scope = Path.Combine(root, "clean-layout");
+        var directory = CreatePackage(Path.Combine(scope, "便携工具"));
+        var desktop = Path.Combine(scope, "desktop");
+        var service = new DesktopShortcutService(desktop, new FixtureRegistration());
+        service.EnsureShortcut(directory);
+        CreatePackage(directory, version: "0.3.0");
+        Assert(PackageIdentity.GetExecutablePath(directory) == Path.Combine(directory, PackageIdentity.ExecutableName), "Clean manifest resolves the root launcher.");
+        var result = service.EnsureShortcut(directory);
+        Assert(result.Status == ShortcutStatus.AlreadyCorrect, "Existing root shortcut remains valid after private runtime migration.");
+        var info = DesktopShortcutService.ReadShortcut(result.ShortcutPath!);
+        Assert(info.TargetPath == Path.Combine(directory, PackageIdentity.ExecutableName) && info.WorkingDirectory == directory && info.IconPath == info.TargetPath,
+            "Shortcut target, working directory and icon all use the clean root entry.");
+        File.AppendAllText(Path.Combine(directory, "app", "Shunshou.App.exe"), "tampered");
+        Assert(PackageIdentity.GetExecutablePath(directory) is null, "Modified private apphost invalidates package identity even when launcher is unchanged.");
+        cases.Add("0.3.0 private runtime preserves root shortcut, icon and working directory; damaged inner apphost is rejected");
+    }
+
     private static void ExplicitOptOut(string root, List<string> cases)
     {
         var scope = Path.Combine(root, "opt-out");
@@ -223,6 +247,42 @@ internal static class Program
         return process.ExitCode;
     }
 
+    private static void ExistingRecoveryLeases(string root, List<string> cases)
+    {
+        var scope = Path.Combine(root, "recovery-leases");
+        var directory = Path.Combine(scope, "app");
+        var lockRoot = Path.Combine(scope, "locks");
+        Directory.CreateDirectory(directory);
+        using (var absent = UpdateCoordination.AcquireExistingApplicationLease(directory, lockRoot))
+            Assert(absent is null && !Directory.Exists(lockRoot), "Read-only recovery lease does not create a missing lock directory.");
+        Assert(RunProbe(directory, lockRoot, "existing-reader") == 77 && !Directory.Exists(lockRoot), "Separate recovery process refuses a missing lease without filesystem writes.");
+        using (var normal = UpdateCoordination.AcquireApplicationLease(directory, lockRoot))
+            Assert(normal is not null, "Normal launch establishes its existing lease fixture.");
+        var lockFile = Directory.GetFiles(lockRoot).Single();
+        var bytes = File.ReadAllBytes(lockFile);
+        var writeTime = File.GetLastWriteTimeUtc(lockFile);
+        using (var recovery = UpdateCoordination.AcquireExistingApplicationLease(directory, lockRoot))
+        {
+            Assert(recovery is not null, "Read-only recovery acquires the existing lease.");
+            Assert(RunProbe(directory, lockRoot, "existing-reader") == 0, "An elevated/second recovery process can share the existing lease.");
+            using var blocked = UpdateCoordination.AcquireUpdateLease(directory, lockRoot);
+            Assert(blocked is null, "Read-only recovery lease still blocks update.");
+        }
+        using (var updater = UpdateCoordination.AcquireUpdateLease(directory, lockRoot))
+        {
+            Assert(updater is not null, "Exclusive updater enters after recovery finishes.");
+            using var blocked = UpdateCoordination.AcquireExistingApplicationLease(directory, lockRoot);
+            Assert(blocked is null && RunProbe(directory, lockRoot, "existing-reader") == 77, "Active update blocks local and separate read-only recovery launches.");
+        }
+        Assert(Directory.GetFiles(lockRoot).Length == 1 && File.ReadAllBytes(lockFile).SequenceEqual(bytes) && File.GetLastWriteTimeUtc(lockFile) == writeTime,
+            "Existing recovery lease does not change file bytes, timestamp or create extra files.");
+        var otherDirectory = Path.Combine(scope, "new-package");
+        Directory.CreateDirectory(otherDirectory);
+        using (var missing = UpdateCoordination.AcquireExistingApplicationLease(otherDirectory, lockRoot))
+            Assert(missing is null && Directory.GetFiles(lockRoot).Length == 1, "Existing lock directory cannot cause recovery to create a missing package lock.");
+        cases.Add("Recovery leases only open existing files; missing leases refuse without writes and exclusive updates remain blocked across processes");
+    }
+
     private static void RunningProcessDiscovery(string root, List<string> cases)
     {
         var packageRoot = Path.Combine(root, "processes", "app");
@@ -231,6 +291,8 @@ internal static class Program
         using var legacyApplication = StartWaitingProbe(packageRoot, "顺手工具箱.exe");
         using var internalApplication = StartWaitingProbe(packageRoot, "Shunshou.App.exe");
         using var tool = StartWaitingProbe(Path.Combine(packageRoot, "tools", "fixture"), "fixture-helper.exe");
+        using var privateApplication = StartWaitingProbe(Path.Combine(packageRoot, "app"), "Shunshou.App.exe");
+        using var privateTool = StartWaitingProbe(Path.Combine(packageRoot, "app", "tools", "recovery", "bin"), "photorec_win.exe");
         using var otherApplication = StartWaitingProbe(differentRoot, "ShunshouToolbox.exe");
         try
         {
@@ -239,11 +301,13 @@ internal static class Program
             Assert(blockers.Any(p => p.ProcessId == legacyApplication.Id && !p.LocationUncertain), "Legacy Chinese application in the exact target directory is found.");
             Assert(blockers.Any(p => p.ProcessId == internalApplication.Id && !p.LocationUncertain), "Internal apphost in the exact target directory is found.");
             Assert(blockers.Any(p => p.ProcessId == tool.Id && !p.LocationUncertain), "A child engine process inside the target tools folder is found.");
+            Assert(blockers.Any(p => p.ProcessId == privateApplication.Id && !p.LocationUncertain), "Private apphost inside app is found even without its launcher.");
+            Assert(blockers.Any(p => p.ProcessId == privateTool.Id && !p.LocationUncertain), "Recovery engine inside app/tools is found.");
             Assert(!blockers.Any(p => p.ProcessId == otherApplication.Id), "Identically named application in another directory is not blocked.");
         }
         finally
         {
-            foreach (var process in new[] { application, legacyApplication, internalApplication, tool, otherApplication })
+            foreach (var process in new[] { application, legacyApplication, internalApplication, tool, privateApplication, privateTool, otherApplication })
             {
                 process.StandardInput.WriteLine("exit");
                 if (!process.WaitForExit(10000)) process.Kill(entireProcessTree: true);
@@ -282,10 +346,13 @@ internal static class Program
     {
         Directory.CreateDirectory(directory);
         var names = new List<string> { executableName, "Shunshou.App.dll" };
+        if (Version.Parse(version) >= new Version(0, 3, 0))
+            names = [executableName, "app/Shunshou.App.dll", "app/Shunshou.App.exe", "app/Shunshou.App.pri"];
         if (includeLegacyExecutable && executableName != PackageIdentity.LegacyExecutableName) names.Add(PackageIdentity.LegacyExecutableName);
         var files = names.Select(name =>
         {
             var bytes = System.Text.Encoding.UTF8.GetBytes("Non-executable package identity fixture: " + name);
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(directory, name))!);
             File.WriteAllBytes(Path.Combine(directory, name), bytes);
             return new { Path = name, Bytes = bytes.Length, Sha256 = Convert.ToHexString(SHA256.HashData(bytes)) };
         }).ToArray();

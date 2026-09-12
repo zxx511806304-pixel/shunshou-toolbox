@@ -142,43 +142,29 @@ public sealed class CompressionService
                 ConsiderCandidate("无损优化，像素尺寸与画质保持不变");
             }
 
-            var trials = new List<(uint Quality, double Scale)>();
-            if (allowLossy)
-            {
-                foreach (uint quality in new uint[] { 90, 80, 70, 60, 50, 40, 30 }) trials.Add((quality, 1));
-                if (allowResize)
-                    foreach (var scale in new[] { 0.85, 0.70, 0.55, 0.40 })
-                        trials.Add((50, scale));
-            }
-
-            for (var trialIndex = 0; trialIndex < trials.Count && bestBytes > target; trialIndex++)
+            if (allowLossy && bestBytes > target && compressible.Length > 0)
             {
                 ct.ThrowIfCancellationRequested();
-                var trial = trials[trialIndex];
-                var selected = new Dictionary<string, string>(lossless, StringComparer.OrdinalIgnoreCase);
-                for (var index = 0; index < compressible.Length; index++)
+                // candidate.zip is the completed baseline with lossless replacements. Measuring
+                // entry payloads in that ZIP lets the allocator reserve every non-image byte and
+                // all ZIP headers before distributing the image budget.
+                Dictionary<string, long> payloadBytes;
+                using (var baseline = ZipFile.OpenRead(candidateZip))
+                    payloadBytes = baseline.Entries.ToDictionary(e => e.FullName.Replace('\\', '/'),
+                        e => e.CompressedLength, StringComparer.OrdinalIgnoreCase);
+                var inputImages = compressible.Select(entry => new BudgetImage(entry.Name, entry.Source!,
+                    lossless.GetValueOrDefault(entry.Name, entry.Source!), payloadBytes[entry.Name])).ToArray();
+                var allocation = AdaptiveImageBudget.Optimize(inputImages, new FileInfo(candidateZip).Length,
+                    target, allowResize, candidateDirectory, progress, ct);
+                foreach (var name in allocation.SkippedImages) warnings.Add(name);
+                WriteZip(entries, candidateZip, allocation.Paths, null, 0, 0, ct);
+                ConsiderCandidate(allocation.Description);
+                // The final ZIP remains authoritative, even if an encoder or archive layout makes
+                // the byte estimate imperfect. An over-limit result is never reported as success.
+                if (new FileInfo(candidateZip).Length > target && bestBytes >= maxBytes)
                 {
-                    ct.ThrowIfCancellationRequested();
-                    var entry = compressible[index];
-                    var candidateImage = Path.Combine(candidateDirectory, index + Path.GetExtension(entry.Name));
-                    try
-                    {
-                        if (TryReencode(entry.Source!, candidateImage, trial.Quality, trial.Scale, ct))
-                        {
-                            var current = selected.GetValueOrDefault(entry.Name, entry.Source!);
-                            if (new FileInfo(candidateImage).Length < new FileInfo(current).Length)
-                                selected[entry.Name] = candidateImage;
-                        }
-                    }
-                    catch (MagickException) { warnings.Add(entry.Name); }
-                    catch (InvalidDataException) { warnings.Add(entry.Name); }
-                    progress?.Report(new(30 + 62d * (trialIndex + (index + 1d) / Math.Max(1, compressible.Length)) /
-                        Math.Max(1, trials.Count), $"尝试质量 {trial.Quality} · 尺寸 {trial.Scale:P0} · {index + 1}/{compressible.Length}"));
+                    progress?.Report(new(93, "当前授权范围内仍未达标，将保留全部文件并报告实际大小"));
                 }
-                WriteZip(entries, candidateZip, selected, null, 0, 0, ct);
-                ConsiderCandidate(trial.Scale < 1
-                    ? $"允许有损：编码质量 {trial.Quality}，图片宽高最多缩至原来的 {trial.Scale:P0}"
-                    : $"允许有损：编码质量 {trial.Quality}，保留像素尺寸");
             }
 
             ct.ThrowIfCancellationRequested();
@@ -192,7 +178,9 @@ public sealed class CompressionService
             var message = reached
                 ? $"已达标：{bestBytes / 1_000_000d:F2} MB，小于 {maxBytes / 1_000_000d:F2} MB 上限，" +
                     (bestBytes <= target ? "并预留余量。" : "但未留足预设的 2.5% 余量。") + $"{bestMode}。"
-                : $"未达目标：当前可得 {bestBytes / 1_000_000d:F2} MB，上传上限为 {maxBytes / 1_000_000d:F2} MB。{bestMode}。全部 {fileCount} 个文件已保留；可提高目标大小或允许缩小图片尺寸。";
+                : $"未达目标：当前可得 {bestBytes / 1_000_000d:F2} MB，上传上限为 {maxBytes / 1_000_000d:F2} MB，还需减少至少 {Math.Max(1, bestBytes - maxBytes + 1):N0} 字节。{bestMode}。全部 {fileCount} 个文件已保留；" +
+                    (allowResize ? "已用尽本版本的保守压缩范围，可提高目标大小。" : allowLossy
+                        ? "可提高目标大小，或在确认画质损失后允许缩小图片尺寸。" : "可提高目标大小，或明确允许有损处理后重试。");
             if (warnings.Count > 0) message += $" 有 {warnings.Count} 张无法安全优化的图片保留原文件。";
             if (compressible.Length == 0) message += " 未发现本版本可优化的 JPG、PNG 或 WebP 图片。";
             progress?.Report(new(100, reached ? "压缩完成，已检查最终 ZIP 大小" : "处理完成，未达到目标大小"));
@@ -228,26 +216,7 @@ public sealed class CompressionService
         return new FileInfo(destination).Length < new FileInfo(source).Length;
     }
 
-    private static bool TryReencode(string source, string destination, uint quality, double scale, CancellationToken ct)
-    {
-        var format = FormatOf(source);
-        if (format == MagickFormat.Png && scale >= 1) return false;
-        using var probe = new MagickImageCollection();
-        probe.Ping(source, new MagickReadSettings { Format = format });
-        if (probe.Count != 1 || probe[0].Depth > 8) return false;
-        if ((ulong)probe[0].Width * probe[0].Height > 100_000_000)
-            throw new InvalidDataException("图片超过一亿像素，已保留原文件。");
-        ct.ThrowIfCancellationRequested();
-        using var image = new MagickImage(source, new MagickReadSettings { Format = format });
-        if (scale < 1)
-            image.Resize(Math.Max(1u, (uint)Math.Round(image.Width * scale)), Math.Max(1u, (uint)Math.Round(image.Height * scale)));
-        if (format != MagickFormat.Png) image.Quality = quality;
-        image.Write(destination, format);
-        ct.ThrowIfCancellationRequested();
-        return true;
-    }
-
-    private static MagickFormat FormatOf(string path) => Path.GetExtension(path).ToLowerInvariant() switch
+    internal static MagickFormat FormatOf(string path) => Path.GetExtension(path).ToLowerInvariant() switch
     {
         ".jpg" or ".jpeg" or ".jfif" => MagickFormat.Jpeg,
         ".png" => MagickFormat.Png,

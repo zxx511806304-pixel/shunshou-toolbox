@@ -33,7 +33,19 @@ public sealed partial class OcrWorkspace : UserControl, IDisposable, IAsyncDispo
     private ScrollViewer? _hostScroll;
     private int _inputRevision;
 
-    public OcrWorkspace() : this((path, token) => new OcrService().RecognizeAsync(path, token)) { }
+    private int _reviewCount;
+    public OcrWorkspace()
+    {
+        InitializeComponent();
+        _previewService = new SearchPreviewService(DispatcherQueue);
+        _recognize = async (path, token) =>
+        {
+            var result = await new OcrService().RecognizeLayoutAsync(path, token);
+            _reviewCount = result.ReviewCount;
+            if (result.Blocks.Count == 0) throw new InvalidOperationException("没有识别到文字，请检查图片中是否包含清晰文字。");
+            return result.Text;
+        };
+    }
 
     // Injection is limited to the in-process verification harness; shipping construction uses real OCR.
     internal OcrWorkspace(Func<string, CancellationToken, Task<string>> recognize)
@@ -110,13 +122,14 @@ public sealed partial class OcrWorkspace : UserControl, IDisposable, IAsyncDispo
             string path = _inputPath;
             _completionText = "";
             ClearNotice();
+            _reviewCount = 0;
             var text = await _recognize(path, linked.Token);
             linked.Token.ThrowIfCancellationRequested();
             if (_disposed || revision != _inputRevision) throw new OperationCanceledException(linked.Token);
             SetResultText(text);
             _recognizedText = ResultEditor.Text;
             _lastExportedText = null;
-            ShowCompletion("已识别");
+            ShowCompletion(_reviewCount > 0 ? $"已识别 · {_reviewCount} 处文字建议对照原图复核" : "已识别");
             return ResultText;
         }
         finally { FinishOperation(); }
@@ -475,6 +488,8 @@ public sealed partial class OcrWorkspace : UserControl, IDisposable, IAsyncDispo
 
     private void CleanupOwnedClipboardFiles()
     {
+        // After recovery starts, avoid background maintenance writes on the possible source disk.
+        if (AppPaths.LoggingDisabled) return;
         foreach (var path in _ownedClipboardFiles.ToArray()) DeleteOwnedClipboardFile(path);
         // Never recurse or enumerate other sessions; only the exact owned, now-empty directory is removed.
         try { if (Directory.Exists(_clipboardDirectory)) Directory.Delete(_clipboardDirectory, recursive: false); }

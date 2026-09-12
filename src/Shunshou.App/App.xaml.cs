@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Shunshou.DesktopIntegration;
+using Shunshou.Core;
 using System.Runtime.InteropServices;
 
 namespace Shunshou.App;
@@ -36,9 +37,15 @@ public partial class App : Application
         {
             var verificationLaunch = Environment.GetCommandLineArgs().Skip(1).Any(argument =>
                 argument.StartsWith("--verify", StringComparison.Ordinal) || argument.StartsWith("--screenshot", StringComparison.Ordinal));
+            var recoveryLaunch = Environment.GetCommandLineArgs().Contains("--recovery", StringComparer.Ordinal);
             if (!verificationLaunch)
             {
-                try { _applicationLease = UpdateCoordination.AcquireApplicationLease(AppContext.BaseDirectory); }
+                try
+                {
+                    _applicationLease = recoveryLaunch
+                        ? UpdateCoordination.AcquireExistingApplicationLease(AppPaths.InstallationDirectory)
+                        : UpdateCoordination.AcquireApplicationLease(AppPaths.InstallationDirectory);
+                }
                 catch (Exception ex)
                 {
                     LogException(ex, "update-coordination");
@@ -48,7 +55,9 @@ public partial class App : Application
                 }
                 if (_applicationLease is null)
                 {
-                    MessageBox(nint.Zero, "软件正在更新，请等待更新完成后再打开。", "顺手工具箱", 0x40);
+                    MessageBox(nint.Zero, recoveryLaunch
+                        ? "请先从其他磁盘正常打开工具箱，再进入误删恢复。若软件正在更新，请等待更新完成。"
+                        : "软件正在更新，请等待更新完成后再打开。", "顺手工具箱", 0x40);
                     Exit();
                     return;
                 }
@@ -56,11 +65,11 @@ public partial class App : Application
             }
             _window = new MainWindow();
             _window.Activate();
-            if (!verificationLaunch)
+            if (!verificationLaunch && !recoveryLaunch)
             {
                 try
                 {
-                    var result = new DesktopShortcutService().InitializeOnNormalLaunch(AppContext.BaseDirectory);
+                    var result = new DesktopShortcutService().InitializeOnNormalLaunch(AppPaths.InstallationDirectory);
                     foreach (var warning in result.Warnings) LogException(new IOException(warning), "desktop-integration");
                 }
                 catch (Exception ex) { LogException(ex, "desktop-integration"); }
@@ -74,9 +83,10 @@ public partial class App : Application
 
     internal static void LogException(Exception exception, string source)
     {
+        if (AppPaths.LoggingDisabled) return;
         try
         {
-            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ShunshouToolbox", "logs");
+            var directory = Path.Combine(AppPaths.DataDirectory, "logs");
             Directory.CreateDirectory(directory);
             var path = Path.Combine(directory, $"error-{DateTime.Now:yyyyMMdd}.log");
             File.AppendAllText(path, $"[{DateTime.Now:O}] {source}{Environment.NewLine}{exception}{Environment.NewLine}{Environment.NewLine}");

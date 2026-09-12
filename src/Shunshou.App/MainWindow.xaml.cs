@@ -28,7 +28,7 @@ public sealed partial class MainWindow : Window
         ["pdf"] = ["PDF 逐页转图片", "PDF 转高清长图", "PDF 转可编辑 Word", "PDF 转可编辑 PPT", "合并 PDF", "拆分 PDF"],
         ["image"] = ["图片格式转换", "图片提取文字"],
         ["media"] = ["音视频格式转换", "按目标大小压缩"],
-        ["files"] = ["按名称搜索", "批量重命名", "撤销重命名"],
+        ["files"] = ["按名称搜索", "误删恢复", "批量重命名", "撤销重命名"],
         ["software"] = ["管理已安装软件"]
     };
 
@@ -56,7 +56,7 @@ public sealed partial class MainWindow : Window
         InitializeWorkspaces(hwnd);
         Navigation.SelectedItem = Navigation.MenuItems[0];
         SelectCategory("compression");
-        Closed += (_, _) => { _cancellation?.Cancel(); DisposeSearch(); OcrEditor.Dispose(); Uninstaller.Dispose(); };
+        Closed += (_, _) => { _cancellation?.Cancel(); DisposeSearch(); OcrEditor.Dispose(); Uninstaller.Dispose(); Recovery.Dispose(); };
     }
 
     private string Operation => OperationBox.SelectedItem as string ?? Operations[_category][0];
@@ -102,11 +102,13 @@ public sealed partial class MainWindow : Window
         RestoreInputDraft();
         SyncOperationButtons();
         bool software = _category == "software";
+        bool recovery = op == "误删恢复";
         bool ocr = op == "图片提取文字";
         SetVisible(OcrArea, ocr);
         SetVisible(Uninstaller, software);
+        SetVisible(Recovery, recovery);
         SetVisible(OperationCard, !software);
-        SetVisible(RunFooter, !software);
+        SetVisible(RunFooter, !software && !recovery);
         if (software) _ = LoadUninstallerAsync();
         bool target = op is "按上传上限压缩" or "按目标大小压缩";
         bool imageConvert = op == "图片格式转换";
@@ -119,7 +121,7 @@ public sealed partial class MainWindow : Window
         SetVisible(AdvancedPanel, imageConvert);
         SetVisible(PdfPanel, pdfImages);
         SetVisible(SearchWorkspace, op == "按名称搜索");
-        SetVisible(GeneralArea, op != "按名称搜索" && !ocr && !software);
+        SetVisible(GeneralArea, op != "按名称搜索" && !ocr && !software && !recovery);
         ResetSearchView();
         SetVisible(RenamePanel, op == "批量重命名");
         SetVisible(OutputPanel, op is not "按名称搜索" and not "批量重命名" and not "撤销重命名");
@@ -136,6 +138,7 @@ public sealed partial class MainWindow : Window
             "ZIP 解压" => ("拖入一个 ZIP 压缩包", "解压到新的文件夹，保留原压缩包", "展开 ZIP 压缩包，恢复目录与文件。"),
             "图片提取文字" => ("拖入截图或图片", "选择图片后识别，可修改、复制或保存文字", "拖入或粘贴图片，选中一张识别文字，可直接编辑和复制。"),
             "按名称搜索" => ("拖入文件或文件夹", "拖入文件夹可快速设置搜索范围", "按名称搜索本机磁盘，选择结果预览，双击打开。"),
+            "误删恢复" => ("选择磁盘或镜像", "查找删除的文件", "从回收站、删除记录或文件内容中寻找资料，预览后复制恢复。"),
             "批量重命名" => ("拖入一批需要整理的文件", "执行前预览新名称，保留文件扩展名", "按前缀和递增序号统一命名，生成可供恢复的记录。"),
             "撤销重命名" => ("选择此前生成的重命名记录", "选择 rename-history 文件夹里的 JSON 记录", "根据本地记录恢复原文件名。文件内容或位置变化时会停止恢复。"),
             "图片格式转换" => ("拖入一张或多张图片", "支持批量转换；多帧图片逐帧导出", "转为常用图片格式，可按需调整尺寸与编码质量。"),
@@ -383,6 +386,12 @@ public sealed partial class MainWindow : Window
             string? selectedId = commandArgs.FirstOrDefault(x => x.StartsWith("--select-app=", StringComparison.Ordinal))?[13..];
             await LoadUninstallerAsync(selectedId);
         }
+        if (commandArgs.Contains("--recovery"))
+        {
+            Navigation.SelectedItem = Navigation.MenuItems[4];
+            SelectCategory("files");
+            OperationBox.SelectedIndex = 1;
+        }
         int dirIndex = Array.IndexOf(commandArgs, "--screenshot-dir");
         int fileIndex = Array.IndexOf(commandArgs, "--screenshot");
         if (dirIndex < 0 && fileIndex < 0) return;
@@ -446,4 +455,3 @@ public sealed partial class MainWindow : Window
         await encoder.FlushAsync();
     }
 }
-

@@ -6,6 +6,7 @@ public static class TestSuite
     public static async Task RunAsync(string root)
     {
         Directory.CreateDirectory(root);
+        await AppPathTests.RunAsync(root);
         await InputTests.RunAsync(root);
         await UninstallTests.RunAsync(root);
         await CompressionTests.RunAsync(root);
@@ -16,6 +17,7 @@ public static class TestSuite
         await PdfTests.RunAsync(root);
         await OcrTests.RunAsync(root);
         await FileTests.RunAsync(root);
+        await RecoveryTests.RunAsync(root);
         Console.WriteLine("PASS: all smoke-test groups completed.");
     }
 }
