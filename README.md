@@ -1,6 +1,6 @@
 # 顺手工具箱
 
-面向日常学习与办公的 Windows 离线工具箱。解压运行，不登录、不激活，文件在本机处理。当前为 **0.2.2 预览版**，功能与 UI 会继续迭代。
+面向日常学习与办公的 Windows 离线工具箱。解压运行，不登录、不激活，文件在本机处理。当前为 **0.3.0 预览版**，功能与 UI 会继续迭代。
 
 ## 已实现
 
@@ -11,18 +11,21 @@
 | 图片与文字 | JPG / PNG / WebP / BMP / TIFF 批量转换、比例缩放、多帧逐帧导出、图片提取文字：粘贴图片、原图预览、编辑、复制与 TXT 导出 |
 | 音频与视频 | MP3 / MP4 / WAV / FLAC / M4A 转换、提取音轨、MP3 / MP4 / M4A 目标大小压缩 |
 | 文件整理 | 全部本机磁盘 / 单盘 / 文件夹按名称搜索，图片缩略图与选中预览，打开文件位置，批量改名预览与撤销 |
+| 误删恢复 | 综合查找、回收站、NTFS 删除记录、文件内容深度扫描、读取已有备份；按名称和格式筛选、图片 / 文字预览、选中复制恢复 |
 | 软件卸载 | 桌面软件和当前用户 Windows 应用列表、正常卸载、关联文件检查、勾选清理、备份恢复 |
 
 ## 运行
 
 支持 Windows 10 2004（19041）及以上、Windows 11；预览版仅 x64。提供两种包含相同工具功能的完整包：
 
-- **自解压 EXE**：双击 `ShunshouToolbox-0.2.2-win-x64-setup.exe`，选择软件存放位置，确认后解压。默认勾选创建桌面快捷方式。以后运行新版 EXE 可更新同一目录。
-- **便携 ZIP**：将 `ShunshouToolbox-0.2.2-win-x64.zip` **完整解压**到可写文件夹，双击 `ShunshouToolbox.exe`。首次正常运行会创建桌面快捷方式；主动删除快捷方式后，不会每次启动都重新生成。不要只复制单个 EXE。
+- **自解压 EXE**：双击 `ShunshouToolbox-0.3.0-win-x64-setup.exe`，选择软件存放位置，确认后解压。默认勾选创建桌面快捷方式。以后运行新版 EXE 可更新同一目录。
+- **便携 ZIP**：将 `ShunshouToolbox-0.3.0-win-x64.zip` **完整解压**到可写文件夹，双击 `ShunshouToolbox.exe`。首次正常运行会创建桌面快捷方式；主动删除快捷方式后，不会每次启动都重新生成。不要只复制单个 EXE。
 
 桌面快捷方式指向软件文件夹；创建后仍需保留完整文件夹。自解压 EXE 只部署软件文件和选择的快捷方式，不登记系统卸载项，不需要账号或激活。处理与解压更新均可离线完成。
 
 默认位置在系统盘当前用户的应用数据目录中，可直接写入，正常部署不请求管理员权限；也可选择其他可写位置。
+
+0.3.0 的全新软件目录只保留四项：`ShunshouToolbox.exe`、`app`、`docs`、`package-manifest.json`。首次正常启动后增加 `data`。运行库、语言资源、图标和工具引擎统一收在 `app`，不再铺满根目录。`app` 内的内容仍是完整软件的一部分，不能单独删除。更新旧版时额外的用户文件会保留，因此原目录可能多于五项。
 
 ## 更新
 
@@ -36,7 +39,7 @@
 
 生成的文件默认保存到 `Documents/ShunshouToolbox/Output`（使用 Windows 实际“文档”位置），也可自行选择位置。软件添加的文件后缀和目录名使用英文，如 `_page001`、`_text`、`Images_...`；保留原输入文件名和 ZIP 内部名称。旧版的“顺手工具箱输出”目录及文件保留原位，不自动搬动或重命名。转换不覆盖原件。批量改名会更改原文件名，执行前展示预览，恢复记录保存在软件目录 `data/rename-history`。
 
-0.2.2 使用新 S 形青绿色图标，程序文件名改为英文，软件界面及桌面快捷方式仍显示“顺手工具箱”。新版 EXE 支持从带包清单的旧中文入口版本升级，并修复本软件拥有的现有快捷方式；不会覆盖同名的无关快捷方式。
+程序使用 S 形青绿色图标和英文入口文件名，软件界面及桌面快捷方式仍显示“顺手工具箱”。新版 EXE 支持从带包清单的旧中文入口版本及 0.2.2 平铺目录升级，并修复本软件拥有的现有快捷方式；不会覆盖同名的无关快捷方式。
 
 ## 拖入文件与搜索
 
@@ -60,11 +63,21 @@
 
 关联扫描采用保守范围：登记的独立安装目录、准确同名的数据目录及软件专属注册表项。系统/共享根目录、用户文档、目录链接、云占位文件，以及与其他软件共用的位置会跳过；单目录超过 2 GB 或 20,000 个条目也会跳过。清理前重新核验扫描内容；恢复不会覆盖后来新增或修改的文件。当前用户 Windows 应用交由 Windows 卸载和管理数据。本模块不是 Geek/BCU 全部清理能力的复制，不保证发现所有残留、修复驱动/服务，或代替每个软件的专用卸载器。
 
+## 误删恢复
+
+打开“文件搜索整理 → 误删恢复”，选择原文件所在磁盘或原始磁盘镜像，再选择保存位置。恢复实际磁盘时，保存位置必须在另一个卷上，建议使用移动硬盘，并从另一个磁盘运行工具箱。“综合查找”依次检查当前用户回收站、可读的 NTFS 删除记录和文件内容；单独选择一种方式可以缩小范围。读取实际磁盘的删除记录或深度扫描需要管理员权限。
+
+找到候选后，输入文件名或 `jpg, pdf, docx` 等格式筛选，选择文件查看图片或文字预览，点击“恢复选中”保存副本。恢复副本平铺保存在所选文件夹，遇到同名会安全改名；显示的原路径只用于参考，不会据此写回旧位置。回收站及备份中的原件保留。“已有备份”读取你手动选择的现有备份文件夹，不会自动寻找历史版本。
+
+NTFS 记录完整时可能保留原名；深度扫描按文件内容寻找，通常没有原名和目录，也可能找到当前仍存在的文件。综合结果仅隐藏与有名候选内容哈希相同的匿名深扫副本，磁盘上的候选文件保留。PNG / JPG / BMP / GIF 图片预览后可识别图中文字，识别只作用于当前图片。
+
+扫描会把候选、诊断与会话文件保存到选定位置；停止后保留已找到的候选。预览可打开或文件长度一致，不等于内容完整。已覆盖数据、SSD TRIM、损坏记录不能保证恢复；当前 NTFS 路线不处理压缩、加密、稀疏文件、跨记录属性列表或额外数据流。具体范围和实现见 [恢复说明](docs/recovery-engine.md)。
+
 ## 准确理解结果
 
 - 20 MB 按 20,000,000 字节计算，并留 2.5% 余量。核验的是最终 ZIP/媒体文件实际大小。无法达标会明确提示，不删除文件或截短视频凑大小。
-- ZIP 目标压缩会优化 JPG / PNG / WebP；其他格式原样保留。无损不能保证固定压缩比例。有损模式可能损失细节，需要检查结果。
-- PDF 转 Word / PPT **以可编辑文字为主**，不是完整复原排版。无文字页会尝试本机 OCR；复杂表格、公式、图表仍需人工整理。
+- ZIP 目标压缩会优化 JPG / PNG / WebP；其他格式原样保留。先尝试无损，再按勾选项调整质量和尺寸，综合文件体积与图片特征分配压缩幅度。PNG 不会为凑大小而偷偷改为 JPG。无损不能保证固定压缩比例，有损结果需要检查。
+- PDF 转 Word / PPT **以可编辑文字为主**。优先提取原生文字，并对扫描页及混合页面中的图片区域补充本机 OCR，整理阅读顺序；Word 输出段落，PPT 输出文字框。复杂表格、公式、图表和原页面布局仍需人工整理，不能保证识别全部文字。
 - PDF 长图保持所选 DPI。非常长的 PNG 可能超过某些看图软件的显示上限，建议同时保存逐页图片。
 - 全盘搜索采用实时名称扫描，大量文件时比常驻索引搜索慢；不提升权限，无法访问的目录和目录链接会跳过。最多显示前 10,000 项，超过后可缩小范围。Everything 式索引、内置文档全文预览及 7z/RAR 尚未包含在本版。
 - 不承诺全部格式可转换，也不把有损压缩称作无损；已损失的音质/画质不能通过转换恢复。
@@ -72,24 +85,29 @@
 
 ## 开发
 
-使用 .NET SDK 10.0.401、Windows x64。UI 与处理服务分别位于 `src/Shunshou.App`、`src/Shunshou.Core`；`Shunshou.Deployment` 负责包校验与目录切换，`Shunshou.DesktopIntegration` 负责快捷方式和运行标记，`Shunshou.Setup` 提供独立解压界面。真实生成样本的集成测试位于 `tests` 下。
+使用 .NET SDK 10.0.401、Windows x64。UI 与处理服务分别位于 `src/Shunshou.App`、`src/Shunshou.Core`；`Shunshou.Deployment` 负责包校验与目录切换，`Shunshou.DesktopIntegration` 负责快捷方式和运行标记，`Shunshou.Setup` 提供独立解压界面，`Shunshou.Launcher` 是根目录的轻量原生启动器。真实生成样本的集成测试位于 `tests` 下。
 
 ```powershell
 dotnet restore Shunshou.slnx
 pwsh ./scripts/Download-Runtime.ps1
 pwsh ./scripts/Download-OcrModels.ps1
+pwsh ./scripts/Download-Recovery.ps1
 dotnet build Shunshou.slnx -c Release
 dotnet run --project tests/Shunshou.SmokeTests -c Release -- artifacts/smoke
 dotnet run --project tests/Shunshou.Deployment.Tests -c Release -- artifacts/deployment
 dotnet run --project tests/Shunshou.DesktopIntegration.Tests -c Release -- artifacts/desktop-integration
+pwsh ./scripts/Test-Launcher.ps1
 pwsh ./scripts/Build-Portable.ps1
 pwsh ./scripts/Build-Setup.ps1
+pwsh ./scripts/Build-RecoverySources.ps1
 ```
 
-可用 `--compression`、`--images`、`--pdf`、`--ocr`、`--media`、`--files`、`--inputs`、`--uninstall` 单独运行测试组。图片和媒体样本由测试生成，不使用用户文件。UI 支持 `--screenshot-dir <目录> --theme light|dark`，以及 `--verify-ui <测试夹具目录> <输出目录>`，验证真实 WinUI 中的输入、搜索、缩略图、OCR 编辑流程和卸载界面。卸载测试使用生成的文件和内存注册表/进程执行器，不卸载测试电脑上的实际软件。
+可用 `--compression`、`--images`、`--pdf`、`--ocr`、`--media`、`--files`、`--inputs`、`--uninstall`、`--recovery` 单独运行测试组。图片、媒体和恢复镜像样本由测试生成，不使用用户文件。UI 支持 `--screenshot-dir <目录> --theme light|dark`，以及 `--verify-ui <测试夹具目录> <输出目录>`，验证真实 WinUI 中的输入、搜索、缩略图、OCR 编辑、恢复和卸载界面。卸载测试使用生成的文件和内存注册表/进程执行器，不卸载测试电脑上的实际软件。
 
-下载脚本校验固定 SHA256。FFmpeg 使用固定 autobuild 资产，Microsoft C++ 运行库从官方签名再分发包中提取，构建过程中不安装系统运行库。OCR 模型需要完成 NuGet 还原后单独下载；运行成品时无需联网。
+下载脚本校验固定 SHA256。FFmpeg 使用固定 autobuild 资产，Microsoft C++ 运行库从官方签名再分发包中提取，构建过程中不安装系统运行库。OCR 模型需要完成 NuGet 还原后单独下载；恢复组件及对应源码依赖固定版本清单。准备恢复源码使用 Python 3.14 或以上的标准库解包支持；原生启动器使用固定 Zig 0.15.2 构建。这些开发工具不随成品安装，运行成品无需联网。
 
-便携构建同时携带 .NET、Windows App SDK、本地 C++ 运行库、FFmpeg 和 OCR 模型，并生成文件哈希清单与静态 DLL 依赖报告。自解压构建嵌入现有便携 ZIP 及其 SHA256 元数据，包含自身需要的 .NET 运行库，产出独立 EXE。已有同版本输出时脚本会拒绝覆盖；使用新的版本号或指定新的 `-OutputRoot`。构建成功仍需要对最终目录实际启动和离线验证。
+便携构建同时携带 .NET、Windows App SDK、本地 C++ 运行库、FFmpeg、OCR 模型和 PhotoRec，生成文件哈希清单与静态 DLL 依赖报告。自解压构建嵌入现有便携 ZIP 及其 SHA256 元数据，包含自身需要的 .NET 运行库，产出独立 EXE。已有同版本输出时脚本会拒绝覆盖；使用新的版本号或指定新的 `-OutputRoot`。构建成功仍需要对最终目录实际启动和离线验证。
 
-详情见 [架构与更新约定](docs/architecture.md)、[分发与更新说明](docs/distribution-and-updates.md)、[0.2.2 测试报告](docs/validation-0.2.2.md)、[0.2.1 测试报告](docs/validation-0.2.1.md)、[0.2.0 功能测试报告](docs/validation-0.2.0.md)、[0.1.1 测试报告](docs/validation-0.1.1.md)、[初版测试报告](docs/validation.md)、[第三方组件](THIRD-PARTY-NOTICES.md)。本项目自有代码未授予公开再分发许可；第三方组件遵循各自许可证。
+恢复组件的完整对应源码与构建资料另打包为 `RecoverySources-0.3.0.zip`，与软件二进制从同一下载位置提供；它不放进安装目录，运行软件不需要解压源码包。版本、许可和校验对应关系见 [恢复源码说明](docs/RecoverySources.md)。
+
+详情见 [架构与更新约定](docs/architecture.md)、[分发与更新说明](docs/distribution-and-updates.md)、[0.3.0 验证记录](docs/validation-0.3.0.md)、[0.2.2 测试报告](docs/validation-0.2.2.md)、[第三方组件](THIRD-PARTY-NOTICES.md)。本项目自有代码未授予公开再分发许可；第三方组件遵循各自许可证。

@@ -11,14 +11,39 @@
 | PDFsharp | 6.2.4 | [empira/PDFsharp](https://github.com/empira/PDFsharp)，MIT |
 | Open XML SDK | 3.5.1 | [dotnet/Open-XML-SDK](https://github.com/dotnet/Open-XML-SDK)，MIT |
 | RapidOcrNet | 4.1.0 | [RapidOcrNet](https://www.nuget.org/packages/RapidOcrNet)，Apache-2.0；模型、ONNX Runtime、SkiaSharp 的来源与声明随包保留 |
+| DiscUtils.Ntfs / Core / Streams | 0.16.13 | [DiscUtils](https://github.com/DiscUtils/DiscUtils)，MIT；通过公开读取 API 解析 NTFS，许可随 NuGet 声明保留 |
 | FFmpeg | n9.0.1-27-g9b0578816c-20260908，LGPL shared | [FFmpeg](https://ffmpeg.org/) / [BtbN builds](https://github.com/BtbN/FFmpeg-Builds)，本构建启用 version3、禁用 GPL；LGPL-3.0-or-later，外部库各有许可 |
-| Microsoft Visual C++ Runtime | 14.44.35211.0，x64 | Microsoft 官方签名再分发包，按随包 Microsoft Software License Terms 使用；英文及中文原许可 RTF 位于 `licenses/Microsoft.VisualCpp` |
+| Microsoft Visual C++ Runtime | 14.44.35211.0，x64 | Microsoft 官方签名再分发包，按随包 Microsoft Software License Terms 使用；英文及中文原许可 RTF 位于 `docs/licenses/Microsoft.VisualCpp` |
+| PhotoRec | 7.2，Windows x64 CLI | [CGSecurity](https://www.cgsecurity.org/)，GPL-2.0-or-later；未经修改的独立可执行文件，对应完整程序源码包含在 TestDisk 7.2 源码发行包中 |
 
-FFmpeg 是独立进程，通过命令行读取本地文件。分发包含未经修改的 ffmpeg、ffprobe、动态库、LGPL/GPL 许可全文及原始 doc 文档，不包含 ffplay。用户可以替换兼容版本；程序不限制对这些组件进行调试或修改以满足其许可条件。精确构建来源、各文件 SHA256 位于 `tools/ffmpeg/build-source.json`；固定资产来自 [autobuild-2026-09-08-23-15](https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-09-08-23-15)，对应 FFmpeg 源代码提交为 `9b0578816c6f94514d330d4f2ae7e44a9fb42692`。固定下载失效或哈希不符时构建脚本会停止，不自动换成最新版本。
+FFmpeg 是独立进程，通过命令行读取本地文件。分发包含未经修改的 ffmpeg、ffprobe、动态库、LGPL/GPL 许可全文及原始 doc 文档，不包含 ffplay。用户可以替换兼容版本；程序不限制对这些组件进行调试或修改以满足其许可条件。精确构建来源、各文件 SHA256 位于 `app/tools/ffmpeg/build-source.json`；固定资产来自 [autobuild-2026-09-08-23-15](https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-09-08-23-15)，对应 FFmpeg 源代码提交为 `9b0578816c6f94514d330d4f2ae7e44a9fb42692`。固定下载失效或哈希不符时构建脚本会停止，不自动换成最新版本。
 
-`licenses/nuget-license-index.json` 汇总还原出的包版本、作者、原许可信息与可获得的源码提交；各包原始 nuspec、声明的许可文件及第三方 NOTICE 保留在 `licenses/nuget`。部分条目仅是构建依赖，并不意味着其整个软件产品已被打包。标准 SPDX 许可文本补充包内的许可表达式，MIT 文件使用包声明的版权信息；这些收集结果不等于完成全部商业再分发审查。
+`docs/licenses/nuget-license-index.json` 汇总还原出的包版本、作者、原许可信息与可获得的源码提交；各包原始 nuspec、声明的许可文件及第三方 NOTICE 保留在 `docs/licenses/nuget`。部分条目仅是构建依赖，并不意味着其整个软件产品已被打包。标准 SPDX 许可文本补充包内的许可表达式，MIT 文件使用包声明的版权信息；这些收集结果不等于完成全部商业再分发审查。
 
-正式向客户分发时，还应将 LGPL 组件及对应依赖的必要源码和构建资料，与二进制从同一分发渠道提供并核对各自义务。本预览包记录了来源、许可证和校验值，没有宣称已归档所有第三方完整对应源码。
+恢复组件的完整对应源码、依赖源码、补丁和构建资料另见下节。其他组件仍须按各自许可证核对分发义务；FFmpeg 等 LGPL 组件应提供相应源码与必要构建资料。恢复源码包不能替代其他组件的源码交付，也不表示本项目已归档所有第三方的完整对应源码。
+
+## 恢复组件与对应源码
+
+0.3.0 仅分发 PhotoRec 命令行程序，不分发 `testdisk_win.exe`、QPhotoRec 或 Qt。NTFS 原名恢复由本项目的托管读取器与 DiscUtils 负责。PhotoRec 安装在 `app/tools/recovery/bin`，保留上游程序，并使用以下固定依赖：
+
+| 文件或依赖 | 固定来源版本 | 随包声明 |
+| --- | --- | --- |
+| `cygwin1.dll` | Cygwin 3.6.10-1 | GPL 与 Cygwin 原许可 / 例外条款，含 newlib 的独立声明 |
+| `cyggcc_s-seh-1.dll` | libgcc1 14.4.0-1 | GCC 原许可与 GCC Runtime Library Exception |
+| `cygiconv-2.dll` | libiconv2 1.19-2 | libiconv / libcharset 原许可 |
+| `cygncursesw-10.dll`、`63/cygwin` | ncurses / terminfo 6.5+20240427-1 | ncurses 原版权和许可 |
+| `cygjpeg-8.dll` | libjpeg8 3.1.4.1-1 | libjpeg-turbo / IJG 的原许可及声明 |
+| `cygz.dll` | zlib0 1.3.2-1 | zlib 原许可 |
+| `cygewf-2.dll` | libewf 20140608 | 保留与对应源码 RPM 匹配的原 DLL 及许可 |
+| PhotoRec 内静态库 | ext2fs 1.45.3、ntfsprogs 2.0.0 | 完整源码及各自原始许可、构建资料 |
+
+依赖版本、来源、SHA256 / SHA512 及每个二进制和源码的对应关系锁定在 [recovery-runtime-lock.json](scripts/recovery-runtime-lock.json)，安装副本的来源说明位于 `app/tools/recovery/build-source.json`。上游原始许可集中保留在 `app/tools/recovery/licenses`。程序启动使用独立进程、固定命令行、文件和输出流，不限制用户依据各组件许可复制、修改或再分发这些组件；工具箱收费不改变这些权利。
+
+发布必须同时提供 **`RecoverySources-0.3.0.zip`**，从与二进制相同的下载位置以同等访问条件获取。源码包包括 PhotoRec / TestDisk 7.2 完整源码、对应 Cygwin 源码包、保留旧库的源 RPM、补丁、构建配方、许可、准备脚本与文件哈希清单。源码包不放入安装目录，运行软件无需下载或解压它；不能只保留上游链接替代本版本采用的源码交付方式。详见 [恢复源码说明](docs/RecoverySources.md)。不承诺从不同工具链重建出的文件与上游原二进制逐字节一致。
+
+## 原生启动器的构建工具
+
+根目录的启动器由本项目 C 源码使用 [Zig 0.15.2](https://ziglang.org/download/0.15.2/) 构建。Zig 编译器仅用于构建，不装入成品；涉及的 Zig 与 MinGW-w64 启动代码声明保留在 `docs/licenses/native-launcher`。启动器使用 Windows 系统 API 与系统 Universal CRT，不另打包一套 .NET 或 Visual C++ 可再分发运行库。
 
 运行 Windows PDF 等系统 API 不意味着本软件获得 Microsoft Office、WPS、WinRAR、Everything 或商业 PDF SDK 的再分发权。本初版没有打包这些产品。
 

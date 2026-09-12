@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '0.2.2',
+    [string]$Version = '0.3.0',
     [string]$PayloadZip = '',
     [string]$OutputRoot = '',
     [string]$Dotnet = ''
@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Runtime.Common.ps1')
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Use a three-part numeric version, for example 0.2.2.' }
+if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Use a three-part numeric version, for example 0.3.0.' }
 if ([string]::IsNullOrWhiteSpace($OutputRoot)) { $OutputRoot = Join-Path $repoRoot 'dist' }
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
 $name = "ShunshouToolbox-$Version-win-x64"

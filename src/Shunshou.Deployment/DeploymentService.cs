@@ -49,7 +49,7 @@ public sealed class DeploymentService
         Directory.CreateDirectory(journal.Stage);
         try
         {
-            FileTrees.PreparePermissions(journal.Stage, source.Tree, ct);
+            FileTrees.PreparePermissions(journal.Stage, source.Preserved, ct);
             await package.ExtractAsync(journal.Stage, progress, ct);
             await FileTrees.CopyPreservedAsync(target, journal.Stage, source.Preserved, progress, ct);
             progress?.Report(new("正在核对新版和保留文件…", 75));
@@ -199,7 +199,18 @@ public sealed class DeploymentService
         }
         var managed = old?.Files.Select(f => f.Path).ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
         managed.Add(PathSafety.ManifestName);
-        var preserved = new TreeSnapshot(tree.Files.Where(f => !managed.Contains(f.Path)).ToList(), tree.Directories, tree.RootAccessSddl);
+        var userFiles = tree.Files.Where(f => !managed.Contains(f.Path)).ToList();
+        // Old runtime-only directories must not reappear as hundreds of empty root
+        // folders after a layout upgrade. Retain every unmanaged directory (even
+        // empty), every user file's ancestors, and managed directories still used
+        // by this package. The entire original tree remains in the version backup.
+        var oldManagedDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in managed) AddParents(oldManagedDirectories, file);
+        var retainedDirectories = tree.Directories.Where(d => !oldManagedDirectories.Contains(d.Path) || package.Directories.Contains(d.Path))
+            .Select(d => d.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in userFiles) AddParents(retainedDirectories, file.Path);
+        foreach (var directory in retainedDirectories.ToArray()) AddParents(retainedDirectories, directory);
+        var preserved = new TreeSnapshot(userFiles, tree.Directories.Where(d => retainedDirectories.Contains(d.Path)).ToList(), tree.RootAccessSddl);
         var preservedBytes = preserved.Files.Sum(f => f.Bytes);
         if (preservedBytes > PathSafety.MaxUserBytes) throw new IOException("需要保留的数据超过 20 GB，请先单独备份后更新。");
         foreach (var file in preserved.Files)
@@ -210,6 +221,12 @@ public sealed class DeploymentService
         var required = checked(package.Files.Values.Sum(f => f.Bytes) + preservedBytes + 64L * 1024 * 1024);
         return new(hadTarget, tree, preserved,
             new(old is not null, old?.Version, package.Manifest.Version, preservedBytes, preserved.Files.Count, required));
+    }
+
+    private static void AddParents(HashSet<string> directories, string path)
+    {
+        for (var index = path.LastIndexOf('/'); index > 0; index = path.LastIndexOf('/', index - 1))
+            directories.Add(path[..index]);
     }
 
     private static void VerifyPreserved(TreeSnapshot expected, TreeSnapshot actual)

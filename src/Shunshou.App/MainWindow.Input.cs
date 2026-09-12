@@ -67,6 +67,14 @@ public sealed partial class MainWindow
     private bool AcceptInputPaths(IEnumerable<string> paths)
     {
         if (_category == "software" || OcrEditor.IsBusy) return false;
+        if (Operation == "误删恢复")
+        {
+            if (_busy) return false;
+            var input = paths.ToArray();
+            if (input.Length != 1) { ShowError("一次选择一个磁盘镜像或备份文件夹。"); return false; }
+            try { Recovery.SelectSource(input[0]); return true; }
+            catch (Exception ex) { ShowError(ex.Message); return false; }
+        }
         var result = InputSelectionPolicy.Select(CurrentInputTool, _inputs, paths, _busy);
         if (result.Applied)
         {

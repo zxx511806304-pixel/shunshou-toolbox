@@ -126,6 +126,19 @@ public sealed partial class MainWindow
             }
             checks.Add("160-image virtualized list: scrolling releases offscreen decoded thumbnails and recycled rows load correct previews");
             RootLayout.RequestedTheme = ElementTheme.Light;
+            string recoveryInput = Path.Combine(output, "recovery-fixtures");
+            Directory.CreateDirectory(recoveryInput);
+            File.Copy(landscape, Path.Combine(recoveryInput, "恢复图片.png"), true);
+            await File.WriteAllTextAsync(Path.Combine(recoveryInput, "恢复文字.txt"), "Generated recovery fixture only.");
+            OperationBox.SelectedIndex = 1;
+            RequireUi(Recovery.Visibility == Visibility.Visible && RunFooter.Visibility == Visibility.Collapsed, "Recovery workspace did not replace general controls");
+            await Recovery.VerifyFixtureAsync(recoveryInput, Path.Combine(output, "recovery-output"));
+            await SaveScreenshot(Path.Combine(output, "recovery.png"));
+            RootLayout.RequestedTheme = ElementTheme.Dark;
+            await Task.Delay(200);
+            await SaveScreenshot(Path.Combine(output, "recovery-dark.png"));
+            checks.Add("Recovery workspace: generated local backup scan, Chinese name and extension filters, real image preview, selected copy preserves originals; no real disk scanned");
+            RootLayout.RequestedTheme = ElementTheme.Light;
             Navigation.SelectedItem = Navigation.MenuItems[5];
             await Uninstaller.LoadAsync();
             await Uninstaller.VerifyFixtureAsync(Path.Combine(output, "software-fixtures"));
@@ -141,6 +154,7 @@ public sealed partial class MainWindow
         }
         catch (Exception ex)
         {
+            try { await SaveScreenshot(Path.Combine(output, "failure.png")); } catch { }
             await File.WriteAllTextAsync(Path.Combine(output, "ui-verification.json"), JsonSerializer.Serialize(new
                 { Passed = false, Checks = checks, Error = ex.ToString() }, new JsonSerializerOptions { WriteIndented = true }));
             App.LogException(ex, "ui-verification");

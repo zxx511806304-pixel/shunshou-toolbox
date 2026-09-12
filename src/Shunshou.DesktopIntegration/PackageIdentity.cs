@@ -35,6 +35,14 @@ public static class PackageIdentity
                 manifest.GetProperty("Architecture").GetString() != "win-x64" ||
                 !Version.TryParse(manifest.GetProperty("Version").GetString(), out _)) return null;
             var entries = manifest.GetProperty("Files").EnumerateArray().ToArray();
+            var version = Version.Parse(manifest.GetProperty("Version").GetString()!);
+            if (version >= new Version(0, 3, 0))
+            {
+                if (!MatchesFile(root, "app/Shunshou.App.dll", entries) ||
+                    !MatchesFile(root, "app/Shunshou.App.exe", entries) ||
+                    !MatchesFile(root, "app/Shunshou.App.pri", entries)) return null;
+                return MatchesFile(root, ExecutableName, entries) ? Path.Combine(root, ExecutableName) : null;
+            }
             if (!MatchesFile(root, "Shunshou.App.dll", entries)) return null;
             // A current entry listed by the manifest must validate. Never fall back to an older
             // binary when a partially updated or modified current executable is present.
@@ -53,6 +61,9 @@ public static class PackageIdentity
         var matches = entries.Where(entry => string.Equals(entry.GetProperty("Path").GetString(), name, StringComparison.OrdinalIgnoreCase)).ToArray();
         if (matches.Length != 1) return false;
         var path = Path.Combine(root, name);
+        // Reject a redirected private runtime directory just as we reject linked entry files.
+        if (name.StartsWith("app/", StringComparison.Ordinal) &&
+            (File.GetAttributes(Path.Combine(root, "app")) & FileAttributes.ReparsePoint) != 0) return false;
         var fileInfo = new FileInfo(path);
         if (!fileInfo.Exists || (fileInfo.Attributes & FileAttributes.ReparsePoint) != 0 ||
             fileInfo.Length != matches[0].GetProperty("Bytes").GetInt64()) return false;

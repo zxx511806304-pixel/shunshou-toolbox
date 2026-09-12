@@ -87,6 +87,44 @@ await Run("update preserves all user files empty folders metadata and retained b
     Check(Directory.Exists(Path.Combine(f.Target, "data", "空目录")), "Empty user folder preserved.");
     Check(await f.Version(f.Target) == "0.2.1", "Updated version.");
 });
+await Run("0.2.2 flat runtime upgrades to 0.3.0 clean layout while preserving user data and empty user folders", async f =>
+{
+    var baseline = f.Package("0.2.2", extra: new() {
+        ["zh-CN/runtime.resources.dll"] = "old-language-runtime", ["de-DE/runtime.resources.dll"] = "old-other-language",
+        ["Assets/icon.png"] = "old-icon", ["old-tools/sub/runtime.dll"] = "old-tool"
+    });
+    await new DeploymentService().InstallOrUpdateAsync(baseline.Request(f.Target));
+    f.WriteUser("data/uninstall-backups/.integrity-key", "exact-user-key");
+    f.WriteUser("data/rename-history/session.json", "exact-history");
+    f.WriteUser("我的文件/图片.png", "exact-picture");
+    f.WriteUser("zh-CN/user-note.txt", "user-file-in-runtime-folder");
+    Directory.CreateDirectory(Path.Combine(f.Target, "old-tools", "my-empty-folder"));
+    Directory.CreateDirectory(Path.Combine(f.Target, "empty-user-folder"));
+    var before = await FileTrees.CaptureAsync(f.Target, default);
+    var update = await new DeploymentService().InstallOrUpdateAsync(f.Package("0.3.0").Request(f.Target));
+    Check(File.Exists(Path.Combine(f.Target, "ShunshouToolbox.exe")) && File.Exists(Path.Combine(f.Target, "app/Shunshou.App.exe")), "Root launcher and private runtime both exist.");
+    Check(!File.Exists(Path.Combine(f.Target, "Shunshou.App.dll")) && !Directory.Exists(Path.Combine(f.Target, "de-DE")) && !Directory.Exists(Path.Combine(f.Target, "Assets")), "Obsolete managed root files and empty runtime directories are absent.");
+    Check(!Directory.Exists(Path.Combine(f.Target, "old-tools/sub")), "Obsolete nested managed runtime folder is not copied.");
+    Check(Directory.Exists(Path.Combine(f.Target, "old-tools/my-empty-folder")) && Directory.Exists(Path.Combine(f.Target, "empty-user-folder")), "Even empty user folders and their ancestors survive.");
+    foreach (var relative in new[] { "data/uninstall-backups/.integrity-key", "data/rename-history/session.json", "我的文件/图片.png", "zh-CN/user-note.txt" })
+        Check(File.ReadAllBytes(Path.Combine(f.Target, relative)).SequenceEqual(File.ReadAllBytes(Path.Combine(update.PreviousBackupDirectory!, relative))), "User bytes remain exact: " + relative);
+    FileTrees.Equal(before, await FileTrees.CaptureAsync(update.PreviousBackupDirectory!, default));
+});
+await Run("clean-layout collision with an existing user app file refuses without touching the old tree", async f =>
+{
+    await f.Install("0.2.2");
+    f.WriteUser("app/Shunshou.App.exe", "this-is-user-content");
+    var before = await FileTrees.CaptureAsync(f.Target, default);
+    await Refuses(() => new DeploymentService().InstallOrUpdateAsync(f.Package("0.3.0").Request(f.Target)));
+    FileTrees.Equal(before, await FileTrees.CaptureAsync(f.Target, default));
+});
+await Run("clean-layout package without private WinUI resources is refused before deployment", async f =>
+{
+    await f.Install("0.2.2");
+    var before = await FileTrees.CaptureAsync(f.Target, default);
+    await Refuses(() => new DeploymentService().InstallOrUpdateAsync(f.Package("0.3.0", includeEntryResource: false).Request(f.Target)));
+    FileTrees.Equal(before, await FileTrees.CaptureAsync(f.Target, default));
+});
 await Run("same version verified reinstall retains prior backups across further updates", async f =>
 {
     await f.Install("0.2.1");
@@ -104,7 +142,7 @@ await Run("downgrade and modified managed file refuse without changing source", 
     var original = await FileTrees.CaptureAsync(f.Target, default);
     await Refuses(() => new DeploymentService().InstallOrUpdateAsync(f.Package("0.2.9").Request(f.Target)));
     FileTrees.Equal(original, await FileTrees.CaptureAsync(f.Target, default));
-    File.WriteAllText(Path.Combine(f.Target, "Shunshou.Core.dll"), "user-modified");
+    File.WriteAllText(Path.Combine(f.Target, "app", "Shunshou.Core.dll"), "user-modified");
     var modified = await FileTrees.CaptureAsync(f.Target, default);
     await Refuses(() => new DeploymentService().InstallOrUpdateAsync(f.Package("0.3.1").Request(f.Target)));
     FileTrees.Equal(modified, await FileTrees.CaptureAsync(f.Target, default));
@@ -454,7 +492,18 @@ sealed class Fixture
             ["Shunshou.Core.dll"] = "fixture-core-" + version,
             ["tools/ocr/model.onnx"] = "fixture-stable-model"
         };
-        if (includeEntryResource) content.Add(System.IO.Path.ChangeExtension(executable, ".pri"), "fixture-pri-" + version);
+        if (System.Version.Parse(version) >= new System.Version(0, 3, 0))
+        {
+            content = new(StringComparer.Ordinal) {
+                [executable] = "fixture-native-launcher-" + version,
+                ["app/Shunshou.App.exe"] = "fixture-apphost-" + version,
+                ["app/Shunshou.App.dll"] = "fixture-app-" + version,
+                ["app/Shunshou.Core.dll"] = "fixture-core-" + version,
+                ["app/tools/ocr/model.onnx"] = "fixture-stable-model"
+            };
+            if (includeEntryResource) content.Add("app/Shunshou.App.pri", "fixture-pri-" + version);
+        }
+        else if (includeEntryResource) content.Add(System.IO.Path.ChangeExtension(executable, ".pri"), "fixture-pri-" + version);
         if (extra is not null) foreach (var pair in extra) content.Add(pair.Key, pair.Value);
         var files = content.Select(kv => new PackageFile(kv.Key, Encoding.UTF8.GetByteCount(kv.Value), Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(kv.Value))))).ToList();
         var manifest = new PackageManifest("顺手工具箱", version, "win-x64", files);

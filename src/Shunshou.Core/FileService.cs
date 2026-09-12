@@ -11,7 +11,7 @@ public sealed partial class FileService
 {
     private readonly string _journalDirectory;
     public FileService(string? journalDirectory = null) => _journalDirectory = journalDirectory
-        ?? Path.Combine(AppContext.BaseDirectory, "data", "rename-history");
+        ?? Path.Combine(AppPaths.DataDirectory, "rename-history");
     public async Task<IReadOnlyList<FileSearchResult>> SearchAsync(string root, string query, bool imagesOnly,
         IProgress<ToolProgress>? progress, CancellationToken ct)
     {

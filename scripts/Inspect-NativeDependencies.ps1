@@ -1,6 +1,8 @@
 param([Parameter(Mandatory)][string]$Directory, [string]$ReportPath = '')
 $ErrorActionPreference = 'Stop'
 $Directory = [IO.Path]::GetFullPath($Directory)
+$privateRuntime = Join-Path $Directory 'app'
+$privateRuntimePrefix = $privateRuntime + [IO.Path]::DirectorySeparatorChar
 if (-not ('ShunshouBuild.PeImports' -as [type])) {
 Add-Type -TypeDefinition @'
 using System;
@@ -39,7 +41,10 @@ foreach ($file in $files) {
     foreach ($dependency in $pe.Imports) {
         $name = $dependency.Name
         $local = Test-Path -LiteralPath (Join-Path $file.DirectoryName $name)
-        $root = Test-Path -LiteralPath (Join-Path $Directory $name)
+        # .NET's native asset resolver runs inside app/ in clean-layout packages.
+        # The root native launcher must resolve its own imports without using app/.
+        $runtimeRoot = if ($file.FullName.StartsWith($privateRuntimePrefix, [StringComparison]::OrdinalIgnoreCase)) { $privateRuntime } else { $Directory }
+        $root = Test-Path -LiteralPath (Join-Path $runtimeRoot $name)
         $contract = $name -match '^(?i)(api-ms-|ext-ms-)'
         $system = Test-Path -LiteralPath (Join-Path ([Environment]::SystemDirectory) $name)
         $vc = $name -match '^(?i)(msvcp|vcruntime|concrt|vccorlib|vcomp|vcamp)\d.*\.dll$'

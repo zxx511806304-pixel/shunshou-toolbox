@@ -152,6 +152,7 @@
           </Border>
         </Grid>
         <local:UninstallerWorkspace x:Name="Uninstaller" Grid.Row="2" Visibility="Collapsed" Margin="0,0,4,0"/>
+        <local:RecoveryWorkspace x:Name="Recovery" Grid.Row="2" Visibility="Collapsed" Margin="0,0,4,0"/>
         <InfoBar x:Name="StatusInfo" Grid.Row="3" IsOpen="False" IsClosable="True" Margin="0,8,4,0"/>
         <Border x:Name="RunFooter" Grid.Row="4" Background="{ThemeResource SurfaceBrush}" BorderBrush="{ThemeResource SurfaceStrokeBrush}" BorderThickness="1" CornerRadius="10" Padding="20,14" Margin="0,12,4,0">
           <Grid ColumnSpacing="18"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Spacing="7" VerticalAlignment="Center"><TextBlock x:Name="ProgressText" Text="准备就绪 · 文件只在你的电脑处理" Style="{StaticResource MutedTextStyle}"/><ProgressBar x:Name="TaskProgress" Minimum="0" Maximum="100" Value="0" Height="3"/></StackPanel><Button x:Name="OpenOutputButton" Grid.Column="1" Content="打开输出" IsEnabled="False" Click="OpenOutput_Click" VerticalAlignment="Center"/><Button x:Name="CancelButton" Grid.Column="2" Content="取消" IsEnabled="False" Click="Cancel_Click" VerticalAlignment="Center"/><Button x:Name="RunButton" Grid.Column="3" Content="开始处理" Style="{StaticResource AccentButtonStyle}" Padding="25,10" Click="Run_Click" AutomationProperties.Name="开始处理文件" VerticalAlignment="Center"/></Grid>
@@ -160,7 +161,6 @@
     </NavigationView>
   </Grid>
 </Window>
-
 
 
 

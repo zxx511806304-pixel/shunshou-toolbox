@@ -31,6 +31,27 @@ public static class OcrTests
         await File.WriteAllTextAsync(Path.Combine(folder, "识别结果.txt"), result);
         Console.WriteLine($"PASS OCR: {service.EngineDescription}，截图英文大小写、数字{(chinese ? "及中文" : "")}实际识别成功");
 
+        var layout = await service.RecognizeLayoutAsync(path);
+        Check(layout.Width == 1200 && layout.Height == 650 && layout.Blocks.Count >= 3, "结构化 OCR 应保留源图尺寸和文字行。");
+        Check(layout.Blocks.All(b => b.X >= 0 && b.Y >= 0 && b.Width > 0 && b.Height > 0
+            && b.Right <= layout.Width && b.Bottom <= layout.Height), "文字框必须位于原图坐标范围内。");
+        if (bundled) Check(layout.Blocks.All(b => b.Confidence is >= 0 and <= 1), "内置模型应保留字符平均置信度。");
+        Check(Normalize(layout.Text).Contains("HELLO12345"), "结构化 OCR 不能丢失识别文字。");
+        string blank = Path.Combine(folder, "空白图片.png");
+        using (var white = new MagickImage(MagickColors.White, 400, 160)) white.Write(blank);
+        var blankLayout = await service.RecognizeLayoutAsync(blank);
+        Check(blankLayout.Blocks.Count == 0 && blankLayout.Text.Length == 0, "空白图片布局应为空，不生成猜测文字。");
+        await MustThrow<InvalidOperationException>(() => service.RecognizeAsync(blank));
+        string small = Path.Combine(folder, "小号英文截图.png");
+        using (var image = new MagickImage(path))
+        {
+            image.Crop(new MagickGeometry(50, 195, 400, 90)); image.ResetPage();
+            image.Resize(200, 45); image.Write(small);
+        }
+        string smallText = await service.RecognizeAsync(small);
+        Check(Normalize(smallText).Contains("HELLO12345"), "小号截图需要保留完整英文与数字。结果：" + smallText);
+        Console.WriteLine("PASS OCR: 原图文字框 / 置信度 / 空白图 / 小号截图");
+
         string tiffPath = Path.Combine(folder, "多页扫描件.tiff");
         using (var frames = new MagickImageCollection())
         {
@@ -62,10 +83,13 @@ public static class OcrTests
 
         string longPath = Path.Combine(folder, "长截图.png");
         File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "ocr-long.png"), longPath, true);
-        string longResult = await service.RecognizeAsync(longPath);
+        var longLayout = await service.RecognizeLayoutAsync(longPath);
+        string longResult = longLayout.Text;
         string longText = Normalize(longResult);
         await File.WriteAllTextAsync(Path.Combine(folder, "长图识别结果.txt"), longResult);
         Check(longText.Contains("FIRSTSCREEN12345") && longText.Contains("LASTSCREEN67890"), "长截图必须同时识别顶部与底部内容。结果：" + longResult);
+        Check(longLayout.Blocks.Any(b => b.Y > 2600), "长截图底部文字框应转换回整图坐标。");
+        Check(longLayout.Blocks.Count(b => Normalize(b.Text).Contains("LASTSCREEN67890")) == 1, "长图重叠区不得重复输出底部文字。");
         using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
         await MustThrow<OperationCanceledException>(() => service.RecognizeAsync(path, cancelled.Token));
         string oversized = Path.Combine(folder, "超大尺寸头.png");

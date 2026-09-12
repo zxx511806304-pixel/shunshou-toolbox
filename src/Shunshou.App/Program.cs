@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using Shunshou.Core;
 
 namespace Shunshou.App;
 
@@ -7,6 +8,7 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Contains("--recovery", StringComparer.Ordinal)) AppPaths.DisableLogging();
         Log("Managed entry point reached.");
         int verifyIndex = Array.IndexOf(args, "--verify-package");
         if (verifyIndex >= 0)
@@ -40,17 +42,14 @@ internal static class Program
 
     private static void Log(string message)
     {
+        if (AppPaths.LoggingDisabled) return;
         var line = $"[{DateTime.Now:O}] {message}{Environment.NewLine}";
-        try { File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "startup.log"), line); }
-        catch
+        try
         {
-            try
-            {
-                var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ShunshouToolbox", "logs");
-                Directory.CreateDirectory(directory);
-                File.AppendAllText(Path.Combine(directory, "startup.log"), line);
-            }
-            catch { }
+            var directory = Path.Combine(AppPaths.DataDirectory, "logs");
+            Directory.CreateDirectory(directory);
+            File.AppendAllText(Path.Combine(directory, "startup.log"), line);
         }
+        catch { /* Portable read-only locations can still launch; never write elsewhere implicitly. */ }
     }
 }

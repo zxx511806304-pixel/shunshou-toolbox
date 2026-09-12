@@ -48,7 +48,219 @@ public static class CompressionTests
         await RejectUnsafeArchives(testRoot);
         await UnreachableTargetAndCancellation(testRoot);
         await LosslessTransparentPngAndAnimation(testRoot);
+        await RunAdaptiveAsync(testRoot);
         await LargeJpegSubmission(testRoot);
+    }
+
+    public static async Task RunAdaptiveAsync(string root)
+    {
+        root = Path.Combine(Path.GetFullPath(root), "compression-adaptive");
+        Directory.CreateDirectory(root);
+        await MixedImagesUseIndividualBudgets(root);
+        await ResizeNeedsExplicitPermission(root);
+        await PreserveUnsupportedImagesAndCancelSearch(root);
+    }
+
+    private static async Task MixedImagesUseIndividualBudgets(string root)
+    {
+        var source = Path.Combine(root, "mixed", "source");
+        Directory.CreateDirectory(Path.Combine(source, "学习资料"));
+        Directory.CreateDirectory(Path.Combine(source, "空目录"));
+        var large = Path.Combine(source, "照片.jpg");
+        var small = Path.Combine(source, "已压缩.jpg");
+        WriteNoise(large, 1024, 768, 100, 701);
+        WriteNoise(small, 320, 240, 35, 702);
+        var screenshot = Path.Combine(source, "学习资料", "截图.png");
+        var documentJpeg = Path.Combine(source, "学习资料", "文字截图.jpg");
+        var pixels = Enumerable.Repeat((byte)255, 1280 * 720 * 3).ToArray();
+        // Deterministic fine strokes on a light background; no installed fonts or private documents.
+        for (var y = 48; y < 650; y += 24)
+            for (var x = 50; x < 1150; x += 11)
+                for (var dy = 0; dy < 8; dy++)
+                    for (var dx = 0; dx < 6; dx++)
+                        if (dx == 0 || dy is 0 or 7 || (x / 11 + y / 24 + dx + dy) % 5 == 0)
+                            Array.Fill(pixels, (byte)25, ((y + dy) * 1280 + x + dx) * 3, 3);
+        using (var image = new MagickImage(pixels, new MagickReadSettings { Width = 1280, Height = 720, Depth = 8, Format = MagickFormat.Rgb }))
+        {
+            image.Write(screenshot, MagickFormat.Png);
+            image.Quality = 96;
+            image.Write(documentJpeg, MagickFormat.Jpeg);
+        }
+        var transparentPixels = new byte[128 * 64 * 4];
+        for (var index = 0; index < transparentPixels.Length; index += 4)
+        {
+            transparentPixels[index] = 210;
+            transparentPixels[index + 1] = 80;
+            transparentPixels[index + 2] = 140;
+            transparentPixels[index + 3] = (byte)(index / 4 % 256);
+        }
+        using (var image = new MagickImage(transparentPixels,
+            new MagickReadSettings { Width = 128, Height = 64, Depth = 8, Format = MagickFormat.Rgba }))
+            image.Write(Path.Combine(source, "学习资料", "透明图.png"), MagickFormat.Png);
+        var note = new byte[17_000];
+        new Random(703).NextBytes(note);
+        File.WriteAllBytes(Path.Combine(source, "学习资料", "附件.bin"), note);
+        var originalHashes = Directory.GetFiles(source, "*", SearchOption.AllDirectories).ToDictionary(p => p, HashFile);
+
+        // Define a real archive budget using a fine (non-ten-step) JPEG quality and otherwise
+        // unchanged inputs. The service must discover its own candidates through its public API.
+        var reference = Path.Combine(root, "mixed", "quality43.jpg");
+        using (var image = new MagickImage(large))
+        {
+            image.Quality = 43;
+            image.Write(reference, MagickFormat.Jpeg);
+        }
+        var budgetZip = Path.Combine(root, "mixed", "reference.zip");
+        using (var archive = ZipFile.Open(budgetZip, ZipArchiveMode.Create))
+        {
+            archive.CreateEntry("空目录/");
+            archive.CreateEntry("学习资料/");
+            foreach (var path in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+                archive.CreateEntryFromFile(path == large ? reference : path,
+                    Path.GetRelativePath(source, path).Replace('\\', '/'), CompressionLevel.SmallestSize);
+        }
+        var maxBytes = (long)Math.Ceiling(new FileInfo(budgetZip).Length / 0.975);
+        var result = await new CompressionService().CompressAsync(source, Path.Combine(root, "mixed", "output"),
+            maxBytes, true, false, null, default);
+        Check(result.ReachedTarget && result.OutputBytes <= Math.Floor(maxBytes * 0.975), "individual image budgets meet real ZIP limit and margin");
+        Check(result.FileCount == originalHashes.Count, "mixed image budget retains every file");
+        using var zip = ZipFile.OpenRead(result.OutputPath);
+        var expectedNames = originalHashes.Keys.Select(p => Path.GetRelativePath(source, p).Replace('\\', '/'))
+            .Concat(["空目录/", "学习资料/"]).Order().ToArray();
+        Check(zip.Entries.Select(e => e.FullName).Order().SequenceEqual(expectedNames), "mixed image budget preserves all relative paths and empty directories");
+        foreach (var name in new[] { "学习资料/截图.png", "学习资料/文字截图.jpg", "学习资料/透明图.png", "已压缩.jpg" })
+        {
+            using var original = new MagickImage(Path.Combine(source, name.Replace('/', Path.DirectorySeparatorChar)));
+            using var stream = zip.GetEntry(name)!.Open();
+            using var output = new MagickImage(stream);
+            Check(output.Width == original.Width && output.Height == original.Height, "protected or already-small image retains dimensions: " + name);
+            Check(output.ToByteArray(MagickFormat.Rgba).SequenceEqual(original.ToByteArray(MagickFormat.Rgba)),
+                "protected or already-small image retains exact pixels: " + name);
+        }
+        using (var stream = zip.GetEntry("照片.jpg")!.Open())
+        using (var output = new MagickImage(stream))
+        using (var directOriginal = new MagickImage(large))
+        {
+            Check(output.Width == 1024 && output.Height == 768, "adaptive photo keeps dimensions without resize permission");
+            Check(output.Quality > 40 && output.Quality < 50, "fine quality budget avoids dropping the whole archive to quality 40");
+            directOriginal.Quality = output.Quality;
+            using var direct = new MagickImage(directOriginal.ToByteArray(MagickFormat.Jpeg));
+            Check(output.ToByteArray(MagickFormat.Rgb).SequenceEqual(direct.ToByteArray(MagickFormat.Rgb)),
+                "selected JPEG is a single encoding from the original, not repeated lossy generations");
+            Console.WriteLine($"  Adaptive photo selected quality {output.Quality}; screenshot pixels and already-small JPEG unchanged.");
+        }
+        using (var stream = zip.GetEntry("学习资料/附件.bin")!.Open())
+        using (var memory = new MemoryStream())
+        {
+            stream.CopyTo(memory);
+            Check(memory.ToArray().SequenceEqual(note), "budget allocator reserves and preserves non-image bytes");
+        }
+        Check(originalHashes.All(pair => HashFile(pair.Key) == pair.Value), "all mixed input originals are byte-identical");
+        Console.WriteLine($"PASS: mixed image budget {result.OriginalBytes:N0} -> {result.OutputBytes:N0} bytes, target {maxBytes:N0}; fine quality, protected text and exact originals.");
+    }
+
+    private static async Task ResizeNeedsExplicitPermission(string root)
+    {
+        var source = Path.Combine(root, "resize", "source");
+        Directory.CreateDirectory(source);
+        var png = Path.Combine(source, "照片仍是PNG.png");
+        WriteNoise(png, 640, 480, 100, 710);
+        var originalHash = HashFile(png);
+        var reference = Path.Combine(root, "resize", "reference.png");
+        using (var image = new MagickImage(png))
+        {
+            image.Resize(352, 264);
+            image.Write(reference, MagickFormat.Png);
+        }
+        var budgetZip = Path.Combine(root, "resize", "reference.zip");
+        using (var zip = ZipFile.Open(budgetZip, ZipArchiveMode.Create))
+            zip.CreateEntryFromFile(reference, Path.GetFileName(png), CompressionLevel.SmallestSize);
+        var target = (long)Math.Ceiling((new FileInfo(budgetZip).Length + 512) / 0.975);
+        var service = new CompressionService();
+        var lossless = await service.CompressAsync(source, Path.Combine(root, "resize", "lossless"), target, false, false, null, default);
+        var noResize = await service.CompressAsync(source, Path.Combine(root, "resize", "no-resize"), target, true, false, null, default);
+        foreach (var result in new[] { lossless, noResize })
+        {
+            Check(!result.ReachedTarget && result.OutputBytes > target, "PNG target is honestly unreachable without resize permission");
+            using var zip = ZipFile.OpenRead(result.OutputPath);
+            using var stream = zip.GetEntry(Path.GetFileName(png))!.Open();
+            using var output = new MagickImage(stream);
+            using var original = new MagickImage(png);
+            Check(output.Width == 640 && output.Height == 480 &&
+                output.ToByteArray(MagickFormat.Rgba).SequenceEqual(original.ToByteArray(MagickFormat.Rgba)),
+                "allowing lossy JPEG encoding does not quantize, resize or convert PNG without resize permission");
+        }
+        var resized = await service.CompressAsync(source, Path.Combine(root, "resize", "authorized"), target, true, true, null, default);
+        Check(resized.ReachedTarget && resized.OutputBytes < target, "explicit resize permission enables photo PNG target");
+        using (var zip = ZipFile.OpenRead(resized.OutputPath))
+        using (var stream = zip.GetEntry(Path.GetFileName(png))!.Open())
+        using (var output = new MagickImage(stream))
+        {
+            Check(output.Format == MagickFormat.Png, "resizing never silently changes PNG format or extension");
+            Check(output.Width < 640 && output.Width >= 256 && output.Height < 480, "PNG dimensions shrink only inside explicit conservative resize range");
+        }
+        Check(HashFile(png) == originalHash, "resizing leaves original PNG byte-identical");
+        Console.WriteLine("PASS: lossless/lossy/resize permissions remain separate; impossible PNG target is explicit; authorized resizing preserves PNG format and original.");
+    }
+
+    private static async Task PreserveUnsupportedImagesAndCancelSearch(string root)
+    {
+        var source = Path.Combine(root, "preserve", "source");
+        Directory.CreateDirectory(source);
+        var highDepth = Path.Combine(source, "16-bit.png");
+        using (var image = new MagickImage(MagickColors.CornflowerBlue, 64, 64))
+        {
+            image.Depth = 16;
+            image.Settings.SetDefine(MagickFormat.Png, "bit-depth", "16");
+            image.Write(highDepth, MagickFormat.Png);
+        }
+        Check(File.ReadAllBytes(highDepth)[24] == 16, "high-depth fixture has a real 16-bit PNG IHDR");
+        var animation = Path.Combine(source, "animated.webp");
+        using (var frames = new MagickImageCollection())
+        {
+            frames.Add(new MagickImage(MagickColors.Red, 64, 64) { AnimationDelay = 10 });
+            frames.Add(new MagickImage(MagickColors.Blue, 64, 64) { AnimationDelay = 20 });
+            frames.Write(animation, MagickFormat.WebP);
+        }
+        var photo = Path.Combine(source, "photo.jpg");
+        WriteNoise(photo, 768, 512, 100, 720);
+        var originalHashes = Directory.GetFiles(source).ToDictionary(p => Path.GetFileName(p), HashFile);
+        var service = new CompressionService();
+        var result = await service.CompressAsync(source, Path.Combine(root, "preserve", "output"), 1024, true, true, null, default);
+        Check(!result.ReachedTarget && result.OutputBytes > 1024, "unreachable budget never removes unsupported images");
+        using (var zip = ZipFile.OpenRead(result.OutputPath))
+            foreach (var name in new[] { "16-bit.png", "animated.webp" })
+            {
+                using var stream = zip.GetEntry(name)!.Open();
+                using var memory = new MemoryStream();
+                stream.CopyTo(memory);
+                Check(Convert.ToHexString(SHA256.HashData(memory.ToArray())) == originalHashes[name], "unsupported depth or animation is byte-preserved: " + name);
+                if (name.EndsWith(".webp"))
+                {
+                    using var frames = new MagickImageCollection(memory.ToArray());
+                    Check(frames.Count == 2, "all animated WebP frames remain available");
+                }
+            }
+        using var cancellation = new CancellationTokenSource();
+        var cancelOutput = Path.Combine(root, "preserve", "cancelled");
+        var progress = new ImmediateProgress<ToolProgress>(value =>
+        {
+            if (value.Message.StartsWith("逐图细化编码质量", StringComparison.Ordinal)) cancellation.Cancel();
+        });
+        await Throws<OperationCanceledException>(() => service.CompressAsync(source, cancelOutput, 1024, true, false,
+            progress, cancellation.Token), "cancellation while generating individual image candidates");
+        Check(cancellation.IsCancellationRequested && !Directory.Exists(cancelOutput), "mid-search cancellation publishes no partial result");
+        Check(originalHashes.All(pair => HashFile(Path.Combine(source, pair.Key)) == pair.Value), "cancelled and impossible adaptive jobs leave originals intact");
+        Console.WriteLine("PASS: 16-bit PNG and animated WebP byte-preserved; impossible target honest; mid-search cancellation publishes no result.");
+    }
+
+    private static void WriteNoise(string path, uint width, uint height, uint quality, int seed)
+    {
+        var pixels = new byte[checked((int)(width * height * 3))];
+        new Random(seed).NextBytes(pixels);
+        using var image = new MagickImage(pixels, new MagickReadSettings { Width = width, Height = height, Depth = 8, Format = MagickFormat.Rgb });
+        image.Quality = quality;
+        image.Write(path, Path.GetExtension(path).Equals(".png", StringComparison.OrdinalIgnoreCase) ? MagickFormat.Png : MagickFormat.Jpeg);
     }
 
     private static async Task RejectUnsafeArchives(string root)
