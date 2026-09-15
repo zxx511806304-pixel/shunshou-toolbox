@@ -21,7 +21,7 @@
           </StackPanel>
         </Border>
       </Grid>
-      <Button x:Name="QrButton" HorizontalAlignment="Right" Width="40" Height="40" Padding="9" IsEnabled="False" Click="Qr_Click" AutomationProperties.Name="查看客服二维码"><FontIcon Glyph="&#xED14;" FontSize="20" Foreground="{ThemeResource MutedBrush}"/></Button>
+      <Button x:Name="QrButton" HorizontalAlignment="Right" Height="40" Padding="12,8" IsEnabled="False" Click="Qr_Click" AutomationProperties.Name="联系客服，查看微信二维码"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon Glyph="&#xED14;" FontSize="18"/><TextBlock Text="联系客服" VerticalAlignment="Center"/></StackPanel></Button>
       <InfoBar x:Name="ShopError" IsOpen="False" IsClosable="True" Severity="Error"/>
     </StackPanel>
   </ScrollViewer>

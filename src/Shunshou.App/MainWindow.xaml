@@ -15,6 +15,17 @@
       <Button x:Name="ThemeToggleButton" Grid.Column="1" Width="36" Height="34" Padding="6" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" Click="ThemeToggle_Click" AutomationProperties.Name="切换为深色主题"><FontIcon x:Name="ThemeToggleIcon" Glyph="&#xE708;" FontSize="17"/></Button>
     </Grid>
     <NavigationView x:Name="Navigation" Grid.Row="1" PaneDisplayMode="Left" OpenPaneLength="214" IsBackButtonVisible="Collapsed" IsSettingsVisible="False" IsPaneToggleButtonVisible="False" SelectionChanged="Navigation_SelectionChanged" PaneTitle="我的工具">
+      <NavigationView.Resources>
+        <ResourceDictionary>
+          <ResourceDictionary.ThemeDictionaries>
+            <ResourceDictionary x:Key="Dark">
+              <SolidColorBrush x:Key="NavigationViewContentBackground" Color="#181818"/>
+              <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="#151515"/>
+              <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#151515"/>
+            </ResourceDictionary>
+          </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+      </NavigationView.Resources>
       <NavigationView.MenuItems>
         <NavigationViewItem Content="压缩与打包" Tag="compression"><NavigationViewItem.Icon><FontIcon Glyph="&#xE8B7;"/></NavigationViewItem.Icon></NavigationViewItem>
         <NavigationViewItem Content="PDF 处理" Tag="pdf"><NavigationViewItem.Icon><FontIcon Glyph="&#xE8A5;"/></NavigationViewItem.Icon></NavigationViewItem>
@@ -168,6 +179,5 @@
     </NavigationView>
   </Grid>
 </Window>
-
 
 

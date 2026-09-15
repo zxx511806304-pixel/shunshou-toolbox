@@ -112,17 +112,25 @@ public sealed partial class ShopWorkspace : UserControl
         _qrFlyout ??= new Flyout
         {
             Placement = FlyoutPlacementMode.Full,
-            LightDismissOverlayMode = LightDismissOverlayMode.On,
-            FlyoutPresenterStyle = new Style(typeof(FlyoutPresenter))
+            LightDismissOverlayMode = LightDismissOverlayMode.On
+        };
+        // Full placement centers the flyout but stretches its default presenter.
+        // Bound the presenter itself to the QR so it cannot grow into a tall panel.
+        _qrFlyout.FlyoutPresenterStyle = new Style(typeof(FlyoutPresenter))
+        {
+            Setters =
             {
-                Setters =
-                {
-                    new Setter(PaddingProperty, new Thickness(0)),
-                    new Setter(BorderThicknessProperty, new Thickness(0)),
-                    new Setter(CornerRadiusProperty, new CornerRadius(12)),
-                    new Setter(MinWidthProperty, 0d),
-                    new Setter(MinHeightProperty, 0d)
-                }
+                new Setter(PaddingProperty, new Thickness(0)),
+                new Setter(BorderThicknessProperty, new Thickness(0)),
+                new Setter(CornerRadiusProperty, new CornerRadius(8)),
+                new Setter(MinWidthProperty, 0d),
+                new Setter(MinHeightProperty, 0d),
+                new Setter(WidthProperty, size),
+                new Setter(HeightProperty, size),
+                new Setter(MaxWidthProperty, size),
+                new Setter(MaxHeightProperty, size),
+                new Setter(HorizontalContentAlignmentProperty, HorizontalAlignment.Center),
+                new Setter(VerticalContentAlignmentProperty, VerticalAlignment.Center)
             }
         };
         _qrFlyout.Content = image;

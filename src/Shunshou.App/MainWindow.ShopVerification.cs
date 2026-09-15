@@ -55,6 +55,15 @@ public sealed partial class MainWindow
                 "QR flyout did not display the cropped original image.");
             var presenter = Descendants(qrPopup!.Child).OfType<FlyoutPresenter>().Single();
             RequireUi(presenter.Content is Image, "QR flyout contains content beyond the QR image.");
+            var qrImage = (Image)presenter.Content;
+            RequireUi(Math.Abs(presenter.ActualWidth - qrImage.ActualWidth) < 2
+                && Math.Abs(presenter.ActualHeight - qrImage.ActualHeight) < 2
+                && qrImage.ActualWidth > 100, "QR presenter has unwanted empty space.");
+            await File.WriteAllTextAsync(Path.Combine(output, "qr-layout.json"), JsonSerializer.Serialize(new
+            {
+                PresenterWidth = presenter.ActualWidth, PresenterHeight = presenter.ActualHeight,
+                ImageWidth = qrImage.ActualWidth, ImageHeight = qrImage.ActualHeight
+            }));
             await ShopArea.SaveQrVerificationAsync(Path.Combine(output, "support-qr.png"));
             ShopArea.CloseQr();
             RequireUi(!ShopArea.QrIsOpen, "QR flyout did not close.");

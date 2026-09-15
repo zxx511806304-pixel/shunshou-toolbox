@@ -20,12 +20,12 @@
                     <SolidColorBrush x:Key="MutedBrush" Color="#5D6A75" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="WorkspaceBrush" Color="#202428" />
-                    <SolidColorBrush x:Key="SurfaceBrush" Color="#292F34" />
-                    <SolidColorBrush x:Key="SurfaceStrokeBrush" Color="#3B454D" />
+                    <SolidColorBrush x:Key="WorkspaceBrush" Color="#181818" />
+                    <SolidColorBrush x:Key="SurfaceBrush" Color="#242424" />
+                    <SolidColorBrush x:Key="SurfaceStrokeBrush" Color="#363636" />
                     <SolidColorBrush x:Key="BrandBrush" Color="#72D8CF" />
-                    <SolidColorBrush x:Key="BrandSoftBrush" Color="#24433F" />
-                    <SolidColorBrush x:Key="MutedBrush" Color="#B3C0C9" />
+                    <SolidColorBrush x:Key="BrandSoftBrush" Color="#203A37" />
+                    <SolidColorBrush x:Key="MutedBrush" Color="#B4B4B4" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <SolidColorBrush x:Key="WorkspaceBrush" Color="{ThemeResource SystemColorWindowColor}" />
