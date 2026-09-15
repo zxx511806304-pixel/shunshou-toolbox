@@ -38,7 +38,8 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleArea);
+        SetTitleBar(TitleDragArea);
+        InitializeAppearance();
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"));
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         double scale = GetDpiForWindow(hwnd) / 96d;
@@ -56,10 +57,10 @@ public sealed partial class MainWindow : Window
         InitializeWorkspaces(hwnd);
         Navigation.SelectedItem = Navigation.MenuItems[0];
         SelectCategory("compression");
-        Closed += (_, _) => { _cancellation?.Cancel(); DisposeSearch(); OcrEditor.Dispose(); Uninstaller.Dispose(); Recovery.Dispose(); };
+        Closed += (_, _) => { _cancellation?.Cancel(); DisposeAppearance(); ShopArea.CloseQr(); DisposeSearch(); OcrEditor.Dispose(); Uninstaller.Dispose(); Recovery.Dispose(); };
     }
 
-    private string Operation => OperationBox.SelectedItem as string ?? Operations[_category][0];
+    private string Operation => _category == "shop" ? "" : OperationBox.SelectedItem as string ?? Operations[_category][0];
 
     private void Navigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
@@ -70,8 +71,21 @@ public sealed partial class MainWindow : Window
     private void SelectCategory(string category)
     {
         if (_busy) return;
+        ShopArea.CloseQr();
+        SetVisible(ShopArea, category == "shop");
         _selectingCategory = true;
         _category = category;
+        if (category == "shop")
+        {
+            CategoryTitle.Text = "顺手小店";
+            CategorySubtitle.Text = "手机卡、会员与生活优惠";
+            foreach (var element in new UIElement[] { OperationCard, GeneralArea, SearchWorkspace, OcrArea, Uninstaller, Recovery, RunFooter })
+                SetVisible(element, false);
+            StatusInfo.IsOpen = false;
+            _selectingCategory = false;
+            _ = ShopArea.EnsureLoadedAsync();
+            return;
+        }
         (CategoryTitle.Text, CategorySubtitle.Text) = category switch
         {
             "pdf" => ("PDF 处理", "从课件到办公资料，把页面变成你需要的样子。"),
@@ -344,7 +358,7 @@ public sealed partial class MainWindow : Window
         InputList.IsReadOnly = OcrInputList.IsReadOnly = busy;
         OcrAddButton.IsEnabled = OcrClearButton.IsEnabled = !busy;
         Navigation.IsPaneToggleButtonVisible = false;
-        foreach (NavigationViewItem item in Navigation.MenuItems) item.IsEnabled = !busy;
+        foreach (var item in Navigation.MenuItems.OfType<NavigationViewItem>()) item.IsEnabled = !busy;
         AddFilesButton.IsEnabled = AddFolderButton.IsEnabled = ClearButton.IsEnabled = !busy;
         foreach (Control control in new Control[] { TargetSize, AllowLossy, AllowResize, FormatBox, ImageQuality, PdfDpi, SearchQuery, ImagesOnly, RenamePrefix, RenameStart, OutputDirectory, ImageWidth })
             control.IsEnabled = !busy;
@@ -372,6 +386,15 @@ public sealed partial class MainWindow : Window
     private async void Root_Loaded(object sender, RoutedEventArgs args)
     {
         var commandArgs = Environment.GetCommandLineArgs();
+        int shopVerifyIndex = Array.IndexOf(commandArgs, "--verify-shop");
+        if (shopVerifyIndex >= 0)
+        {
+            if (shopVerifyIndex + 1 >= commandArgs.Length) { Environment.Exit(2); return; }
+            int result = await VerifyShopAsync(commandArgs[shopVerifyIndex + 1]);
+            if (result != 0) Environment.Exit(result); else Application.Current.Exit();
+            return;
+        }
+        if (commandArgs.Contains("--shop")) Navigation.SelectedItem = ShopNavigationItem;
         int verifyIndex = Array.IndexOf(commandArgs, "--verify-ui");
         if (verifyIndex >= 0)
         {
@@ -406,7 +429,7 @@ public sealed partial class MainWindow : Window
             {
                 string directory = Path.GetFullPath(commandArgs[dirIndex + 1]);
                 Directory.CreateDirectory(directory);
-                foreach (NavigationViewItem item in Navigation.MenuItems)
+                foreach (var item in Navigation.MenuItems.OfType<NavigationViewItem>())
                 {
                     Navigation.SelectedItem = item;
                     SelectCategory((string)item.Tag);

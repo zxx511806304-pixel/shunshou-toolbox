@@ -8,7 +8,7 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
-        if (args.Contains("--recovery", StringComparer.Ordinal)) AppPaths.DisableLogging();
+        if (args.Contains("--recovery", StringComparer.Ordinal) || args.Contains("--verify-shop", StringComparer.Ordinal)) AppPaths.DisableLogging();
         Log("Managed entry point reached.");
         int verifyIndex = Array.IndexOf(args, "--verify-package");
         if (verifyIndex >= 0)

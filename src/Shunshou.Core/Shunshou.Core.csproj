@@ -11,4 +11,7 @@
     <PackageReference Include="RapidOcrNet" Version="4.1.0" />
     <PackageReference Include="DiscUtils.Ntfs" Version="0.16.13" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources/ShopResources.bin" LogicalName="Shunshou.Core.ShopResources.bin" />
+  </ItemGroup>
 </Project>

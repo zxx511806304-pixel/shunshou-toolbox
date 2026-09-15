@@ -83,7 +83,21 @@ public partial class App : Application
 
     internal static void LogException(Exception exception, string source)
     {
-        if (AppPaths.LoggingDisabled) return;
+        if (AppPaths.LoggingDisabled)
+        {
+            var arguments = Environment.GetCommandLineArgs();
+            var verification = Array.IndexOf(arguments, "--verify-shop");
+            if (verification >= 0 && verification + 1 < arguments.Length)
+            {
+                try
+                {
+                    Directory.CreateDirectory(arguments[verification + 1]);
+                    File.AppendAllText(Path.Combine(arguments[verification + 1], "diagnostics.log"), $"{source}: {exception}{Environment.NewLine}");
+                }
+                catch { }
+            }
+            return;
+        }
         try
         {
             var directory = Path.Combine(AppPaths.DataDirectory, "logs");

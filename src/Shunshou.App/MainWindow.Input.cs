@@ -66,7 +66,7 @@ public sealed partial class MainWindow
 
     private bool AcceptInputPaths(IEnumerable<string> paths)
     {
-        if (_category == "software" || OcrEditor.IsBusy) return false;
+        if (_category is "software" or "shop" || OcrEditor.IsBusy) return false;
         if (Operation == "误删恢复")
         {
             if (_busy) return false;
@@ -112,7 +112,7 @@ public sealed partial class MainWindow
 
     private void Window_DragOver(object sender, DragEventArgs args)
     {
-        bool canReceive = _category != "software" && !OcrEditor.IsBusy && !_busy && !_receivingDrop && args.DataView.Contains(StandardDataFormats.StorageItems);
+        bool canReceive = _category is not "software" and not "shop" && !OcrEditor.IsBusy && !_busy && !_receivingDrop && args.DataView.Contains(StandardDataFormats.StorageItems);
         args.AcceptedOperation = canReceive ? DataPackageOperation.Copy : DataPackageOperation.None;
         args.Handled = true;
         if (canReceive)
