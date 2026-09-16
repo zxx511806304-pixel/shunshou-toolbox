@@ -22,6 +22,8 @@ public sealed partial class MainWindow
     private void InitializeWorkspaces(IntPtr hwnd)
     {
         OcrEditor.HostWindowHandle = Uninstaller.HostWindowHandle = Recovery.HostWindowHandle = hwnd;
+        VideoTools.HostWindowHandle = hwnd;
+        VideoTools.BusyChanged += (_, busy) => SetBusy(busy);
         InputList.MaximumListHeight = 140;
         OcrInputList.MaximumListHeight = 100;
         foreach (var list in new[] { InputList, OcrInputList })
@@ -85,7 +87,8 @@ public sealed partial class MainWindow
             var button = new ToggleButton
             {
                 Content = operations[i], Tag = i, HorizontalAlignment = HorizontalAlignment.Stretch,
-                Padding = new Thickness(12, 8, 12, 8), IsChecked = i == OperationBox.SelectedIndex
+                Padding = new Thickness(12, 8, 12, 8), IsChecked = i == OperationBox.SelectedIndex,
+                Style = (Style)Application.Current.Resources["OperationTabStyle"]
             };
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, operations[i]);
             button.Click += (_, _) =>
@@ -106,7 +109,7 @@ public sealed partial class MainWindow
 
     private void RestoreInputDraft()
     {
-        if (_category == "software" || Operation == "误删恢复") return;
+        if (_category == "software" || Operation is "误删恢复" or "链接下载视频" or "视频水印处理") return;
         var draft = _inputWorkspace.SwitchTo(CurrentInputTool, _inputs, _activeInputPath);
         _inputDraftMessage = draft.Message;
         _inputs.Clear();

@@ -66,7 +66,7 @@ public sealed partial class MainWindow
         if (_appearanceDisposed) return;
         bool dark = RootLayout.ActualTheme == ElementTheme.Dark;
         var label = dark ? "切换为浅色主题" : "切换为深色主题";
-        ThemeToggleIcon.Glyph = dark ? "\uE706" : "\uE708";
+        ThemeToggleIcon.Kind = dark ? "sun" : "moon";
         AutomationProperties.SetName(ThemeToggleButton, label);
         ToolTipService.SetToolTip(ThemeToggleButton, label);
         if (!AppWindowTitleBar.IsCustomizationSupported()) return;

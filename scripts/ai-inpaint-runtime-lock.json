@@ -1,0 +1,29 @@
+{
+  "Name": "MI-GAN-512-Places2 ONNX Pipeline v2",
+  "Version": "406830d0fa60666da0071c342ad2fbc8f30c5c64",
+  "License": "MIT",
+  "ProjectUrl": "https://github.com/Picsart-AI-Research/MI-GAN",
+  "SourceCommit": "2b793c5ece43f4253e32d4afc257120a5deed6f5",
+  "Purpose": "轻量 AI 局部修补；本地逐帧图像补全",
+  "Model": {
+    "Url": "https://huggingface.co/andraniksargsyan/migan/resolve/406830d0fa60666da0071c342ad2fbc8f30c5c64/migan_pipeline_v2.onnx",
+    "File": "model.onnx",
+    "CacheFile": "migan_pipeline_v2.onnx",
+    "Bytes": 28079181,
+    "Sha256": "6f1f3530a1a2324b19752018ce756088b07973cda8d7d890034ace5c8a48c40b",
+    "HashSource": "Author Hugging Face model repository LFS SHA256 metadata",
+    "InputContract": "image uint8 RGB NCHW [1,3,H,W]; mask uint8 NCHW [1,1,H,W], 255 known, 0 inpaint; output uint8 RGB NCHW same dimensions"
+  },
+  "Licenses": [
+    {
+      "Url": "https://raw.githubusercontent.com/Picsart-AI-Research/MI-GAN/2b793c5ece43f4253e32d4afc257120a5deed6f5/LICENSE",
+      "File": "MI-GAN-LICENSE.txt",
+      "Sha256": "674e33456b8d03693b84ab305aa7372d93c91e68b234651b0adad106d518e6eb"
+    },
+    {
+      "Url": "https://raw.githubusercontent.com/Picsart-AI-Research/MI-GAN/2b793c5ece43f4253e32d4afc257120a5deed6f5/LICENSE-WEIGHTS",
+      "File": "MI-GAN-LICENSE-WEIGHTS.txt",
+      "Sha256": "674e33456b8d03693b84ab305aa7372d93c91e68b234651b0adad106d518e6eb"
+    }
+  ]
+}

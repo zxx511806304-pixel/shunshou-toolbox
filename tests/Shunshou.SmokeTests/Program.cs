@@ -5,7 +5,8 @@ Directory.CreateDirectory(root);
 Console.WriteLine($"Test artifacts: {root}");
 try
 {
-    if (args.Contains("--recovery")) await RecoveryTests.RunAsync(root);
+    if (args.Contains("--video-download")) await VideoDownloadSmokeTests.RunAsync(root);
+    else if (args.Contains("--recovery")) await RecoveryTests.RunAsync(root);
     else if (args.Contains("--compression-adaptive")) await CompressionTests.RunAdaptiveAsync(root);
     else if (args.Contains("--inputs")) await InputTests.RunAsync(root);
     else if (args.Contains("--uninstall")) await UninstallTests.RunAsync(root);

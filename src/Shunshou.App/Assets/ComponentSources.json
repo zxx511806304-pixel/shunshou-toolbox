@@ -1,0 +1,190 @@
+{
+  "SchemaVersion": 1,
+  "KnownRuntimeFolders": [
+    "ffmpeg",
+    "ocr",
+    "recovery",
+    "video-download",
+    "vcredist"
+  ],
+  "Components": [
+    {
+      "Id": "ffmpeg",
+      "Group": "音视频转换与水印处理",
+      "Name": "FFmpeg",
+      "Purpose": "格式转换、目标大小压缩、音视频合并、裁剪与水印处理",
+      "VersionSource": "ffmpeg",
+      "License": "LGPL-3.0-or-later；外部库各有许可",
+      "ProjectUrl": "https://github.com/FFmpeg/FFmpeg",
+      "AdditionalUrl": "https://github.com/BtbN/FFmpeg-Builds"
+    },
+    {
+      "Id": "yt-dlp",
+      "Group": "视频链接下载",
+      "Name": "yt-dlp",
+      "Purpose": "解析公开链接与下载视频",
+      "VersionSource": "video:ytDlp",
+      "License": "Unlicense；随附 EJS 组件为 ISC / MIT",
+      "ProjectUrl": "https://github.com/yt-dlp/yt-dlp"
+    },
+    {
+      "Id": "python",
+      "Group": "视频链接下载",
+      "Name": "CPython",
+      "Purpose": "独立下载组件运行环境",
+      "VersionSource": "video:python",
+      "License": "PSF-2.0 及随附第三方声明",
+      "ProjectUrl": "https://github.com/python/cpython"
+    },
+    {
+      "Id": "node",
+      "Group": "视频链接下载",
+      "Name": "Node.js",
+      "Purpose": "下载解析所需的 JavaScript 运行环境",
+      "VersionSource": "video:node",
+      "License": "MIT 及随附第三方声明",
+      "ProjectUrl": "https://github.com/nodejs/node"
+    },
+    {
+      "Id": "magick",
+      "Group": "图片与 PDF",
+      "Name": "Magick.NET / ImageMagick",
+      "Purpose": "图片转换、图片压缩、像素处理与多帧图片读取",
+      "NuGetPackage": "Magick.NET-Q8-AnyCPU",
+      "License": "Apache-2.0；ImageMagick 与编解码器声明见 Notice.txt",
+      "ProjectUrl": "https://github.com/dlemstra/Magick.NET",
+      "AdditionalUrl": "https://github.com/ImageMagick/ImageMagick"
+    },
+    {
+      "Id": "pdfpig",
+      "Group": "图片与 PDF",
+      "Name": "PdfPig",
+      "Purpose": "读取 PDF 中的文字与布局信息",
+      "NuGetPackage": "PdfPig",
+      "License": "Apache-2.0",
+      "ProjectUrl": "https://github.com/UglyToad/PdfPig"
+    },
+    {
+      "Id": "pdfsharp",
+      "Group": "图片与 PDF",
+      "Name": "PDFsharp",
+      "Purpose": "合并与拆分 PDF",
+      "NuGetPackage": "PDFsharp",
+      "License": "MIT",
+      "ProjectUrl": "https://github.com/empira/PDFsharp"
+    },
+    {
+      "Id": "openxml",
+      "Group": "图片与 PDF",
+      "Name": "Open XML SDK",
+      "Purpose": "生成可编辑 Word 与 PowerPoint 文档",
+      "NuGetPackage": "DocumentFormat.OpenXml",
+      "License": "MIT",
+      "ProjectUrl": "https://github.com/dotnet/Open-XML-SDK"
+    },
+    {
+      "Id": "rapidocrnet",
+      "Group": "图片文字识别",
+      "Name": "RapidOcrNet",
+      "Purpose": "本地中文、英文与数字识别",
+      "NuGetPackage": "RapidOcrNet",
+      "License": "Apache-2.0",
+      "ProjectUrl": "https://github.com/BobLd/RapidOcrNet"
+    },
+    {
+      "Id": "paddleocr",
+      "Group": "图片文字识别",
+      "Name": "PaddleOCR / RapidOCR 模型",
+      "Purpose": "文字检测、方向分类与识别模型",
+      "Version": "PP-OCRv6 Small / PP-OCRv5；RapidAI v3.9.2 分发",
+      "License": "Apache-2.0",
+      "ProjectUrl": "https://github.com/PaddlePaddle/PaddleOCR",
+      "AdditionalUrl": "https://github.com/RapidAI/RapidOCR"
+    },
+    {
+      "Id": "onnx",
+      "Group": "图片文字识别",
+      "Name": "ONNX Runtime",
+      "Purpose": "本地模型推理",
+      "NuGetPackage": "Microsoft.ML.OnnxRuntime",
+      "License": "MIT 及随附第三方声明",
+      "ProjectUrl": "https://github.com/microsoft/onnxruntime"
+    },
+    {
+      "Id": "skiasharp",
+      "Group": "图片文字识别",
+      "Name": "SkiaSharp",
+      "Purpose": "识别前后的图像处理",
+      "NuGetPackage": "SkiaSharp",
+      "License": "MIT 及 Skia 第三方声明",
+      "ProjectUrl": "https://github.com/mono/SkiaSharp"
+    },
+    {
+      "Id": "clipper",
+      "Group": "图片文字识别",
+      "Name": "Clipper2",
+      "Purpose": "文字区域几何运算",
+      "NuGetPackage": "Clipper2",
+      "License": "Boost Software License 1.0",
+      "ProjectUrl": "https://github.com/AngusJohnson/Clipper2"
+    },
+    {
+      "Id": "discutils",
+      "Group": "误删恢复",
+      "Name": "DiscUtils",
+      "Purpose": "读取 NTFS 删除记录与文件内容",
+      "NuGetPackage": "DiscUtils.Ntfs",
+      "License": "MIT",
+      "ProjectUrl": "https://github.com/DiscUtils/DiscUtils"
+    },
+    {
+      "Id": "photorec",
+      "Group": "误删恢复",
+      "Name": "PhotoRec",
+      "Purpose": "按文件签名与内容进行深度扫描",
+      "VersionSource": "photorec",
+      "License": "GPL-2.0-or-later；依赖保留各自原许可",
+      "ProjectUrl": "https://www.cgsecurity.org/wiki/PhotoRec",
+      "AdditionalUrl": "https://github.com/cgsecurity/testdisk"
+    },
+    {
+      "Id": "dotnet",
+      "Group": "界面与运行基础",
+      "Name": ".NET",
+      "Purpose": "程序运行、ZIP 打包与本地文件处理",
+      "VersionSource": "dotnet",
+      "License": "MIT 及随附第三方声明",
+      "ProjectUrl": "https://github.com/dotnet/runtime"
+    },
+    {
+      "Id": "winui",
+      "Group": "界面与运行基础",
+      "Name": "Windows App SDK / WinUI 3",
+      "Purpose": "原生窗口、控件、主题与交互",
+      "NuGetPackage": "Microsoft.WindowsAppSDK",
+      "License": "分发包适用 Microsoft Software License Terms；含 NOTICE",
+      "ProjectUrl": "https://github.com/microsoft/WindowsAppSDK",
+      "AdditionalUrl": "https://github.com/microsoft/microsoft-ui-xaml"
+    },
+    {
+      "Id": "vcredist",
+      "Group": "界面与运行基础",
+      "Name": "Microsoft Visual C++ Runtime",
+      "Purpose": "本地处理组件所需的运行库",
+      "VersionSource": "visualCpp",
+      "License": "Microsoft Software License Terms（非开源组件）",
+      "ProjectUrl": "https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist"
+    }
+  ],
+  "References": [
+    {
+      "Id": "bcu-reference",
+      "Name": "Bulk Crap Uninstaller",
+      "Group": "设计与研究参考",
+      "Purpose": "卸载流程研究；未打包或复制 BCU、UninstallTools、ObjectListView 代码",
+      "Version": "流程参考",
+      "License": "参考链接；本软件未集成该组件",
+      "ProjectUrl": "https://github.com/BCUninstaller/Bulk-Crap-Uninstaller"
+    }
+  ]
+}

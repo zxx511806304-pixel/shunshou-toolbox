@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '0.3.2',
+    [string]$Version = '0.5.1',
     [string]$OutputRoot = '',
     [string]$Dotnet = '',
     [switch]$SkipZip
@@ -20,10 +20,14 @@ $name = "ShunshouToolbox-$Version-win-x64"
 $final = Assert-ChildPath -Root $OutputRoot -Path (Join-Path $OutputRoot $name)
 $zip = $final + '.zip'
 if ((Test-Path -LiteralPath $final) -or (Test-Path -LiteralPath $zip)) { throw "Output already exists. Choose a new -Version or -OutputRoot; no previous package will be deleted: $final" }
-foreach ($required in @('runtime/ffmpeg/bin/ffmpeg.exe','runtime/ffmpeg/bin/ffprobe.exe','runtime/ffmpeg/build-source.json','runtime/vcredist/bin/msvcp140.dll','runtime/vcredist/bin/vcruntime140_1.dll','runtime/ocr/v6/PP-OCRv6_det_small.onnx','runtime/ocr/v6/PP-OCRv6_rec_small.onnx','runtime/recovery/bin/photorec_win.exe','runtime/recovery/bin/63/cygwin','runtime/recovery/build-source.json','runtime/recovery/dependency-sources.json')) {
+foreach ($required in @('runtime/video-download/python.exe','runtime/video-download/node.exe','runtime/video-download/yt-dlp','runtime/ffmpeg/bin/ffmpeg.exe','runtime/ffmpeg/bin/ffprobe.exe','runtime/ffmpeg/build-source.json','runtime/vcredist/bin/msvcp140.dll','runtime/vcredist/bin/vcruntime140_1.dll','runtime/ocr/v6/PP-OCRv6_det_small.onnx','runtime/ocr/v6/PP-OCRv6_rec_small.onnx','runtime/recovery/bin/photorec_win.exe','runtime/recovery/bin/63/cygwin','runtime/recovery/build-source.json','runtime/recovery/dependency-sources.json')) {
     if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $required))) { throw "Missing offline runtime: $required. Run Download-Runtime.ps1, Download-OcrModels.ps1 and Download-Recovery.ps1 first." }
 }
 if (Test-Path -LiteralPath (Join-Path $repoRoot 'runtime/recovery/bin/testdisk_win.exe')) { throw 'The TestDisk executable must not be redistributed. Run Download-Recovery.ps1 to refresh the PhotoRec runtime.' }
+foreach ($requiredAi in @('model.onnx','sttn.onnx','component-source.json','runtime-lock.json')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot ('runtime/ai-inpaint/' + $requiredAi)))) { throw "Missing AI component: $requiredAi. Prepare both verified models before packaging the three engine choices." }
+}
+& (Join-Path $PSScriptRoot 'Get-AiInpaintRuntime.ps1') -RequireSttn
 $oldRecoverySources = Join-Path $repoRoot 'runtime/recovery/sources'
 if ((Test-Path -LiteralPath $oldRecoverySources) -and @(Get-ChildItem -LiteralPath $oldRecoverySources -Recurse -File).Count -gt 0) { throw 'Recovery source archives belong in the separate source companion, not in the application runtime. Run Download-Recovery.ps1.' }
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
@@ -36,11 +40,12 @@ try {
     # Generate the actual source companion at the same distribution location and
     # refresh its exact filename/hash document before copying docs into the app.
     & (Join-Path $PSScriptRoot 'Build-RecoverySources.ps1') -Version $Version -OutputRoot $OutputRoot | Out-Null
+    & (Join-Path $PSScriptRoot 'Build-AiRunner.ps1') -Dotnet $Dotnet
     & $Dotnet publish (Join-Path $repoRoot 'src/Shunshou.App/Shunshou.App.csproj') -c Release -r win-x64 --self-contained true `
         '-p:Platform=x64' '-p:WindowsAppSDKSelfContained=true' '-p:PublishSingleFile=false' '-p:PublishTrimmed=false' `
         '-p:DebugType=None' '-p:DebugSymbols=false' "-p:Version=$Version" -o $appStage --nologo
     if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
-    foreach ($resource in @('App.xbf','MainWindow.xbf','InputFileList.xbf','OcrWorkspace.xbf','UninstallerWorkspace.xbf','RecoveryWorkspace.xbf','ShopWorkspace.xbf','Shunshou.App.pri')) {
+    foreach ($resource in @('App.xbf','MainWindow.xbf','InputFileList.xbf','OcrWorkspace.xbf','UninstallerWorkspace.xbf','RecoveryWorkspace.xbf','ShopWorkspace.xbf','VideoWorkspace.xbf','ToolboxTheme.xbf','Shunshou.App.pri')) {
         if (-not (Test-Path -LiteralPath (Join-Path $appStage $resource))) { throw "Published WinUI resource is missing: $resource" }
     }
     $hostPath = Join-Path $appStage 'Shunshou.App.exe'
@@ -75,6 +80,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD-PARTY-NOTICES.md') -Destination $docsStage
     if (Test-Path -LiteralPath (Join-Path $repoRoot 'CHANGELOG.md')) { Copy-Item -LiteralPath (Join-Path $repoRoot 'CHANGELOG.md') -Destination $docsStage }
     & (Join-Path $PSScriptRoot 'Collect-Licenses.ps1') -Destination (Join-Path $docsStage 'licenses')
+    & (Join-Path $PSScriptRoot 'Build-ComponentCatalog.ps1') -DocsDirectory $docsStage -RuntimeDirectory (Join-Path $appStage 'tools')
     $nativeLicenses = Join-Path $docsStage 'licenses/native-launcher'
     New-Item -ItemType Directory -Path $nativeLicenses -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $repoRoot '.tools/zig-x86_64-windows-0.15.2/LICENSE') -Destination (Join-Path $nativeLicenses 'Zig-LICENSE.txt')

@@ -1,0 +1,27 @@
+{
+  "Name": "STTN spatial-temporal video inpainting",
+  "Version": "f39f62c5bbbe3e3eba084c487353a2c651bfdcde",
+  "License": "MIT",
+  "ProjectUrl": "https://github.com/researchmm/STTN",
+  "Purpose": "深度 AI 视频修补；多帧时空注意力补全",
+  "Source": {
+    "Commit": "f39f62c5bbbe3e3eba084c487353a2c651bfdcde",
+    "Url": "https://api.github.com/repos/researchmm/STTN/zipball/f39f62c5bbbe3e3eba084c487353a2c651bfdcde",
+    "CacheFile": "sttn-f39f62c5bbbe3e3eba084c487353a2c651bfdcde.zip",
+    "Sha256": "a6a8839fa18ae9567547819a2d10408599c5fd747d6c9bba829544d548954e2e"
+  },
+  "Checkpoint": {
+    "Url": "https://drive.usercontent.google.com/download?id=1ZAMV8547wmZylKRt5qR_tC5VlosXD4Wv&export=download&confirm=t",
+    "PublishedLink": "https://drive.google.com/file/d/1ZAMV8547wmZylKRt5qR_tC5VlosXD4Wv/view?usp=sharing",
+    "File": "sttn.pth",
+    "Bytes": 66252587,
+    "Sha256": "25b0c2c30042d82efd1893bd42ec726764262d94115393a1718f8d65d2a7817b",
+    "HashSource": "SHA256 computed from the original author-linked Google Drive response on 2026-09-16; fixed for subsequent acquisition, not an independently published upstream checksum",
+    "UpstreamLastModified": "2020-09-18T11:52:36Z"
+  },
+  "LicenseFile": {
+    "Url": "https://raw.githubusercontent.com/researchmm/STTN/f39f62c5bbbe3e3eba084c487353a2c651bfdcde/LICENSE",
+    "File": "STTN-LICENSE.txt",
+    "Sha256": "eab7e7997cfae100b49258c03a21122f0a23070413e27440efd52fb22fb07224"
+  }
+}

@@ -23,6 +23,10 @@ jobs:
         with:
           global-json-file: global.json
       - uses: actions/setup-python@v7.0.0
+        id: ai-python
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-python@v7.0.0
         with:
           python-version: '3.14'
       - name: Restore
@@ -33,8 +37,12 @@ jobs:
           ./scripts/Download-Runtime.ps1
           ./scripts/Download-OcrModels.ps1
           ./scripts/Download-Recovery.ps1
+          ./scripts/Get-VideoDownloadRuntime.ps1
+          ./scripts/Build-SttnModel.ps1 -Python '${{ steps.ai-python.outputs.python-path }}'
       - name: Build
         run: dotnet build Shunshou.slnx -c Release --no-restore
+      - name: Verify video cancellation without a UI continuation
+        run: dotnet run --project tests/Shunshou.VideoCancellation.Tests -c Release --no-build -- artifacts/video-cancellation
       - name: Verify generated documents, images, archives, audio and video
         run: dotnet run --project tests/Shunshou.SmokeTests -c Release --no-build -- artifacts/smoke
       - name: Verify deployment and shortcut isolation

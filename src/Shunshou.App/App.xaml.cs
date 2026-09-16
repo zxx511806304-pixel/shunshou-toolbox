@@ -87,6 +87,7 @@ public partial class App : Application
         {
             var arguments = Environment.GetCommandLineArgs();
             var verification = Array.IndexOf(arguments, "--verify-shop");
+            if (verification < 0) verification = Array.IndexOf(arguments, "--verify-v040");
             if (verification >= 0 && verification + 1 < arguments.Length)
             {
                 try

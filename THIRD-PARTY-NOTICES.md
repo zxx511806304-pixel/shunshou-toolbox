@@ -1,5 +1,15 @@
 # 第三方组件说明
 
+## 0.5.1 新增视频功能
+
+链接下载采用 yt-dlp 官方源码 zipimport 分发版（Unlicense）、随附 EJS 脚本及其 ISC / MIT 组件、CPython 3.13.15 和 Node.js 24.21.0。原始声明随包保留在 `app/tools/video-download/licenses`，版本、来源与校验值见 `runtime-lock.json` 和 [下载组件说明](docs/VideoDownloadComponents.md)。不包含官方 GPL PyInstaller 下载器 EXE。
+
+水印处理复用现有 LGPL FFmpeg 的 crop、overlay、gblur、drawbox、removelogo 过滤器；未加入 GPL delogo、OpenCV 或非商业 AI 模型。邻域修补是基于周围像素的估算，不恢复原本被覆盖的真实细节。
+
+AI 修补使用 MI-GAN（代码与权重 MIT）、STTN（上游 MIT 项目及作者发布的 checkpoint），通过隔离的 ONNX Runtime DirectML 1.24.4 进程运行。DirectML 二进制按其包内 Microsoft 许可分发，不将仓库的源码许可替代二进制许可。模型原链接、固定版本、哈希及许可依据见 [AI 组件说明](docs/AiInpaintComponents.md)，原文位于 `app/tools/ai-inpaint/licenses`。
+
+程序的“关于顺手工具箱”从本次构建生成的 `docs/components.json` 展示来源与完整依赖。新增外部引擎须登记来源元数据；新增 NuGet 依赖由构建记录自动收录。
+
 本项目自有代码与下列独立组件分别适用各自许可。收费产品也必须保留第三方声明并履行许可证义务；不能移除随包许可文件。
 
 | 组件 | 本次锁定版本 | 项目与许可 |
@@ -39,7 +49,7 @@ FFmpeg 是独立进程，通过命令行读取本地文件。分发包含未经�
 
 依赖版本、来源、SHA256 / SHA512 及每个二进制和源码的对应关系锁定在 [recovery-runtime-lock.json](scripts/recovery-runtime-lock.json)，安装副本的来源说明位于 `app/tools/recovery/build-source.json`。上游原始许可集中保留在 `app/tools/recovery/licenses`。程序启动使用独立进程、固定命令行、文件和输出流，不限制用户依据各组件许可复制、修改或再分发这些组件；工具箱收费不改变这些权利。
 
-发布必须同时提供 **`RecoverySources-0.3.0.zip`**，从与二进制相同的下载位置以同等访问条件获取。源码包包括 PhotoRec / TestDisk 7.2 完整源码、对应 Cygwin 源码包、保留旧库的源 RPM、补丁、构建配方、许可、准备脚本与文件哈希清单。源码包不放入安装目录，运行软件无需下载或解压它；不能只保留上游链接替代本版本采用的源码交付方式。详见 [恢复源码说明](docs/RecoverySources.md)。不承诺从不同工具链重建出的文件与上游原二进制逐字节一致。
+发布必须同时提供 **`RecoverySources-0.5.1.zip`**，从与二进制相同的下载位置以同等访问条件获取。源码包包括 PhotoRec / TestDisk 7.2 完整源码、对应 Cygwin 源码包、保留旧库的源 RPM、补丁、构建配方、许可、准备脚本与文件哈希清单。源码包不放入安装目录，运行软件无需下载或解压它；不能只保留上游链接替代本版本采用的源码交付方式。详见 [恢复源码说明](docs/RecoverySources.md)。不承诺从不同工具链重建出的文件与上游原二进制逐字节一致。
 
 ## 原生启动器的构建工具
 

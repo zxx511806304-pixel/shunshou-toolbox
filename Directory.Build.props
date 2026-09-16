@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
-    <Version>0.3.2</Version>
+    <Version>0.5.1</Version>
     <Company>顺手工具箱</Company>
     <Product>顺手工具箱</Product>
   </PropertyGroup>

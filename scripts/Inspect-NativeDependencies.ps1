@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $Directory = [IO.Path]::GetFullPath($Directory)
 $privateRuntime = Join-Path $Directory 'app'
 $privateRuntimePrefix = $privateRuntime + [IO.Path]::DirectorySeparatorChar
+$toolsPrefix = [IO.Path]::GetFullPath((Join-Path $privateRuntime 'tools')) + [IO.Path]::DirectorySeparatorChar
 if (-not ('ShunshouBuild.PeImports' -as [type])) {
 Add-Type -TypeDefinition @'
 using System;
@@ -30,7 +31,7 @@ namespace ShunshouBuild {
 }
 '@
 }
-$files = @(Get-ChildItem -LiteralPath $Directory -Recurse -File | Where-Object { $_.Extension -in @('.dll','.exe') })
+$files = @(Get-ChildItem -LiteralPath $Directory -Recurse -File | Where-Object { $_.Extension -in @('.dll','.exe','.pyd') })
 $records = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
 foreach ($file in $files) {
@@ -43,7 +44,8 @@ foreach ($file in $files) {
         $local = Test-Path -LiteralPath (Join-Path $file.DirectoryName $name)
         # .NET's native asset resolver runs inside app/ in clean-layout packages.
         # The root native launcher must resolve its own imports without using app/.
-        $runtimeRoot = if ($file.FullName.StartsWith($privateRuntimePrefix, [StringComparison]::OrdinalIgnoreCase)) { $privateRuntime } else { $Directory }
+        $runtimeRoot = if ($file.FullName.StartsWith($toolsPrefix, [StringComparison]::OrdinalIgnoreCase)) { $file.DirectoryName }
+            elseif ($file.FullName.StartsWith($privateRuntimePrefix, [StringComparison]::OrdinalIgnoreCase)) { $privateRuntime } else { $Directory }
         $root = Test-Path -LiteralPath (Join-Path $runtimeRoot $name)
         $contract = $name -match '^(?i)(api-ms-|ext-ms-)'
         $system = Test-Path -LiteralPath (Join-Path ([Environment]::SystemDirectory) $name)
