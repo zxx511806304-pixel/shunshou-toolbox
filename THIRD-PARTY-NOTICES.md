@@ -1,6 +1,8 @@
 # 第三方组件说明
 
-## 0.5.1 新增视频功能
+## 1.0.0 视频、字幕与网页工具
+
+网页预览及 PDF 保存使用 Microsoft Edge WebView2 SDK（随 WinUI 依赖），配合用户系统中的 Evergreen Runtime。运行时不打包进本产品，缺少时提供 Microsoft 官方安装页面。SDK 的实际版本及许可原文列入随包 NuGet 清单。原项目与文档：[WebView2](https://learn.microsoft.com/microsoft-edge/webview2/) / [官方示例](https://github.com/MicrosoftEdge/WebView2Samples)。字幕下载复用下述 yt-dlp、CPython 及 FFmpeg 组件，没有新增在线翻译服务。
 
 链接下载采用 yt-dlp 官方源码 zipimport 分发版（Unlicense）、随附 EJS 脚本及其 ISC / MIT 组件、CPython 3.13.15 和 Node.js 24.21.0。原始声明随包保留在 `app/tools/video-download/licenses`，版本、来源与校验值见 `runtime-lock.json` 和 [下载组件说明](docs/VideoDownloadComponents.md)。不包含官方 GPL PyInstaller 下载器 EXE。
 
@@ -49,7 +51,7 @@ FFmpeg 是独立进程，通过命令行读取本地文件。分发包含未经�
 
 依赖版本、来源、SHA256 / SHA512 及每个二进制和源码的对应关系锁定在 [recovery-runtime-lock.json](scripts/recovery-runtime-lock.json)，安装副本的来源说明位于 `app/tools/recovery/build-source.json`。上游原始许可集中保留在 `app/tools/recovery/licenses`。程序启动使用独立进程、固定命令行、文件和输出流，不限制用户依据各组件许可复制、修改或再分发这些组件；工具箱收费不改变这些权利。
 
-发布必须同时提供 **`RecoverySources-0.5.1.zip`**，从与二进制相同的下载位置以同等访问条件获取。源码包包括 PhotoRec / TestDisk 7.2 完整源码、对应 Cygwin 源码包、保留旧库的源 RPM、补丁、构建配方、许可、准备脚本与文件哈希清单。源码包不放入安装目录，运行软件无需下载或解压它；不能只保留上游链接替代本版本采用的源码交付方式。详见 [恢复源码说明](docs/RecoverySources.md)。不承诺从不同工具链重建出的文件与上游原二进制逐字节一致。
+发布必须同时提供 **`RecoverySources-1.0.0.zip`**，从与二进制相同的下载位置以同等访问条件获取。源码包包括 PhotoRec / TestDisk 7.2 完整源码、对应 Cygwin 源码包、保留旧库的源 RPM、补丁、构建配方、许可、准备脚本与文件哈希清单。源码包不放入安装目录，运行软件无需下载或解压它；不能只保留上游链接替代本版本采用的源码交付方式。详见 [恢复源码说明](docs/RecoverySources.md)。不承诺从不同工具链重建出的文件与上游原二进制逐字节一致。
 
 ## 原生启动器的构建工具
 

@@ -14,5 +14,6 @@
     <Project Path="tests/Shunshou.VideoAi.Tests/Shunshou.VideoAi.Tests.csproj" />
     <Project Path="tests/Shunshou.VideoCancellation.Tests/Shunshou.VideoCancellation.Tests.csproj" />
     <Project Path="tests/Shunshou.VideoWatermark.Tests/Shunshou.VideoWatermark.Tests.csproj" />
+    <Project Path="tests/Shunshou.Subtitle.Tests/Shunshou.Subtitle.Tests.csproj" />
   </Folder>
 </Solution>

@@ -25,9 +25,9 @@ public sealed partial class MainWindow : Window
     private static readonly Dictionary<string, string[]> Operations = new()
     {
         ["compression"] = ["按上传上限压缩", "无损 ZIP 打包", "ZIP 解压"],
-        ["pdf"] = ["PDF 逐页转图片", "PDF 转高清长图", "PDF 转可编辑 Word", "PDF 转可编辑 PPT", "合并 PDF", "拆分 PDF"],
+        ["pdf"] = ["PDF 逐页转图片", "PDF 转高清长图", "PDF 转可编辑 Word", "PDF 转可编辑 PPT", "合并 PDF", "拆分 PDF", "网页转 PDF"],
         ["image"] = ["图片格式转换", "图片提取文字"],
-        ["media"] = ["音视频格式转换", "按目标大小压缩", "链接下载视频", "视频水印处理"],
+        ["media"] = ["音视频格式转换", "按目标大小压缩", "链接下载视频", "视频水印处理", "下载视频字幕"],
         ["files"] = ["按名称搜索", "误删恢复", "批量重命名", "撤销重命名"],
         ["software"] = ["管理已安装软件"]
     };
@@ -59,7 +59,7 @@ public sealed partial class MainWindow : Window
         InitializeWorkspaces(hwnd);
         Navigation.SelectedItem = Navigation.MenuItems[0];
         SelectCategory("compression");
-        Closed += (_, _) => { _cancellation?.Cancel(); DisposeAppearance(); ShopArea.CloseQr(); DisposeSearch(); OcrEditor.Dispose(); Uninstaller.Dispose(); Recovery.Dispose(); VideoTools.Dispose(); };
+        Closed += (_, _) => { _cancellation?.Cancel(); DisposeAppearance(); ShopArea.CloseQr(); DisposeSearch(); OcrEditor.Dispose(); Uninstaller.Dispose(); Recovery.Dispose(); VideoTools.Dispose(); SubtitleTools.Dispose(); WebPdfTools.Dispose(); };
     }
 
     private string Operation => _category == "shop" ? "" : OperationBox.SelectedItem as string ?? Operations[_category][0];
@@ -75,6 +75,7 @@ public sealed partial class MainWindow : Window
         if (_busy) return;
         ShopArea.CloseQr();
         VideoTools.PausePreview();
+        WebPdfTools.PausePreview();
         SetVisible(ShopArea, category == "shop");
         _selectingCategory = true;
         _category = category;
@@ -82,8 +83,9 @@ public sealed partial class MainWindow : Window
         {
             CategoryTitle.Text = "顺手小店";
             CategorySubtitle.Text = "手机卡、会员与生活优惠";
-            foreach (var element in new UIElement[] { OperationCard, GeneralArea, SearchWorkspace, OcrArea, Uninstaller, Recovery, VideoTools, RunFooter })
+            foreach (var element in new UIElement[] { OperationCard, GeneralArea, SearchWorkspace, OcrArea, Uninstaller, Recovery, VideoTools, SubtitleTools, WebPdfTools, RunFooter })
                 SetVisible(element, false);
+            UpdateConnectionStatus();
             StatusInfo.IsOpen = false;
             _selectingCategory = false;
             _ = ShopArea.EnsureLoadedAsync();
@@ -116,6 +118,7 @@ public sealed partial class MainWindow : Window
     private void ConfigureOperation()
     {
         VideoTools.PausePreview();
+        WebPdfTools.PausePreview();
         string op = Operation;
         RestoreInputDraft();
         SyncOperationButtons();
@@ -123,13 +126,18 @@ public sealed partial class MainWindow : Window
         bool recovery = op == "误删恢复";
         bool ocr = op == "图片提取文字";
         bool videoTool = op is "链接下载视频" or "视频水印处理";
+        bool subtitles = op == "下载视频字幕";
+        bool webPdf = op == "网页转 PDF";
+        SetVisible(SubtitleTools, subtitles);
+        SetVisible(WebPdfTools, webPdf);
+        UpdateConnectionStatus();
         SetVisible(VideoTools, videoTool);
         if (videoTool) VideoTools.SelectMode(op == "视频水印处理");
         SetVisible(OcrArea, ocr);
         SetVisible(Uninstaller, software);
         SetVisible(Recovery, recovery);
         SetVisible(OperationCard, !software);
-        SetVisible(RunFooter, !software && !recovery && !videoTool);
+        SetVisible(RunFooter, !software && !recovery && !videoTool && !subtitles && !webPdf);
         if (software) _ = LoadUninstallerAsync();
         bool target = op is "按上传上限压缩" or "按目标大小压缩";
         bool imageConvert = op == "图片格式转换";
@@ -142,7 +150,7 @@ public sealed partial class MainWindow : Window
         SetVisible(AdvancedPanel, imageConvert);
         SetVisible(PdfPanel, pdfImages);
         SetVisible(SearchWorkspace, op == "按名称搜索");
-        SetVisible(GeneralArea, op != "按名称搜索" && !ocr && !software && !recovery && !videoTool);
+        SetVisible(GeneralArea, op != "按名称搜索" && !ocr && !software && !recovery && !videoTool && !subtitles && !webPdf);
         ResetSearchView();
         SetVisible(RenamePanel, op == "批量重命名");
         SetVisible(OutputPanel, op is not "按名称搜索" and not "批量重命名" and not "撤销重命名");
@@ -166,6 +174,8 @@ public sealed partial class MainWindow : Window
             "合并 PDF" => ("按顺序选择多份 PDF", "合并顺序与添加顺序相同", "把多份材料合成一个 PDF，生成新文件。"),
             "链接下载视频" => ("", "", "粘贴链接，选择画质，保存到电脑。"),
             "视频水印处理" => ("", "", "框选画面区域，预览效果后导出新视频。"),
+            "下载视频字幕" => ("", "", "提取网站提供的字幕，保存为字幕文件或纯文字。"),
+            "网页转 PDF" => ("", "", "粘贴网址，预览网页，保存为 PDF。"),
             _ when _category == "pdf" => ("拖入一份 PDF 文档", "处理后保存为新文件，原 PDF 保留", "本地处理 PDF 页面，选择适合后续使用的输出方式。"),
             _ => ("拖入一个音频或视频文件", "转换为新文件，源文件保留", "转换常用音视频格式，或按提交要求调整大小。")
         };
@@ -395,6 +405,14 @@ public sealed partial class MainWindow : Window
     private async void Root_Loaded(object sender, RoutedEventArgs args)
     {
         var commandArgs = Environment.GetCommandLineArgs();
+        int releaseVerifyIndex = Array.IndexOf(commandArgs, "--verify-v100");
+        if (releaseVerifyIndex >= 0)
+        {
+            if (releaseVerifyIndex + 1 >= commandArgs.Length) { Environment.Exit(2); return; }
+            int result = await VerifyV100Async(commandArgs[releaseVerifyIndex + 1]);
+            if (result != 0) Environment.Exit(result); else Close();
+            return;
+        }
         int designVerifyIndex = Array.IndexOf(commandArgs, "--verify-v040");
         if (designVerifyIndex >= 0)
         {

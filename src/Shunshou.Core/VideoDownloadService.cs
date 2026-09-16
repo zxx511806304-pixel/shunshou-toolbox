@@ -111,8 +111,8 @@ public sealed class VideoDownloadService(string? engineDirectory = null, string?
         return uri.AbsoluteUri;
     }
 
-    private sealed record Engines(string Directory, string Python, string JavaScript, string Ffmpeg, string Probe);
-    private Engines ResolveEngines()
+    internal sealed record Engines(string Directory, string Python, string JavaScript, string Ffmpeg, string Probe);
+    internal Engines ResolveEngines()
     {
         var directory = ResolveDirectory(engineDirectory, "SHUNSHOU_VIDEO_DOWNLOAD_DIR", "video-download", "python.exe");
         var ffmpeg = ResolveDirectory(ffmpegDirectory, "SHUNSHOU_FFMPEG_DIR", Path.Combine("ffmpeg", "bin"), "ffmpeg.exe");
@@ -136,12 +136,12 @@ public sealed class VideoDownloadService(string? engineDirectory = null, string?
         return Path.GetFullPath(directory);
     }
 
-    private static List<string> CommonArguments(Engines engines) =>
+    internal static List<string> CommonArguments(Engines engines) =>
         ["-I", Path.Combine(engines.Directory, "yt-dlp"), "--ignore-config", "--no-plugin-dirs", "--no-cache-dir", "--no-remote-components",
          "--no-js-runtimes", "--js-runtimes", "node:" + engines.JavaScript, "--ffmpeg-location", engines.Ffmpeg,
          "--no-playlist", "--no-colors", "--encoding", "utf-8", "--socket-timeout", "20", "--retries", "2", "--fragment-retries", "2", "--abort-on-unavailable-fragments"];
 
-    private static async Task<string> RunAsync(string executable, IEnumerable<string> arguments, string workingDirectory, CancellationToken ct, Action<string>? onLine = null)
+    internal static async Task<string> RunAsync(string executable, IEnumerable<string> arguments, string workingDirectory, CancellationToken ct, Action<string>? onLine = null)
     {
         ct.ThrowIfCancellationRequested();
         var info = new ProcessStartInfo(executable)

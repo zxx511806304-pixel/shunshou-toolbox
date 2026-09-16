@@ -24,6 +24,9 @@ public sealed partial class MainWindow
         OcrEditor.HostWindowHandle = Uninstaller.HostWindowHandle = Recovery.HostWindowHandle = hwnd;
         VideoTools.HostWindowHandle = hwnd;
         VideoTools.BusyChanged += (_, busy) => SetBusy(busy);
+        SubtitleTools.HostWindowHandle = WebPdfTools.HostWindowHandle = hwnd;
+        SubtitleTools.BusyChanged += (_, busy) => SetBusy(busy);
+        WebPdfTools.BusyChanged += (_, busy) => SetBusy(busy);
         InputList.MaximumListHeight = 140;
         OcrInputList.MaximumListHeight = 100;
         foreach (var list in new[] { InputList, OcrInputList })
@@ -79,14 +82,15 @@ public sealed partial class MainWindow
         OperationButtons.ColumnDefinitions.Clear();
         OperationButtons.RowDefinitions.Clear();
         string[] operations = Operations[_category];
-        int columns = operations.Length == 4 ? 4 : Math.Min(3, operations.Length);
+        int columns = operations.Length == 4 || operations.Length > 6 ? 4 : Math.Min(3, operations.Length);
         for (int i = 0; i < columns; i++) OperationButtons.ColumnDefinitions.Add(new ColumnDefinition());
         for (int i = 0; i < (operations.Length + columns - 1) / columns; i++) OperationButtons.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         for (int i = 0; i < operations.Length; i++)
         {
             var button = new ToggleButton
             {
-                Content = operations[i], Tag = i, HorizontalAlignment = HorizontalAlignment.Stretch,
+                Content = new TextBlock { Text = operations[i], TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center },
+                Tag = i, HorizontalAlignment = HorizontalAlignment.Stretch,
                 Padding = new Thickness(12, 8, 12, 8), IsChecked = i == OperationBox.SelectedIndex,
                 Style = (Style)Application.Current.Resources["OperationTabStyle"]
             };
@@ -109,7 +113,7 @@ public sealed partial class MainWindow
 
     private void RestoreInputDraft()
     {
-        if (_category == "software" || Operation is "误删恢复" or "链接下载视频" or "视频水印处理") return;
+        if (_category == "software" || Operation is "误删恢复" or "链接下载视频" or "视频水印处理" or "网页转 PDF" or "下载视频字幕") return;
         var draft = _inputWorkspace.SwitchTo(CurrentInputTool, _inputs, _activeInputPath);
         _inputDraftMessage = draft.Message;
         _inputs.Clear();

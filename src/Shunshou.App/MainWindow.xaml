@@ -32,7 +32,7 @@
       </NavigationView.MenuItems>
       <NavigationView.PaneFooter>
         <StackPanel Padding="18,12,18,24" Spacing="9">
-          <Border Background="Transparent" CornerRadius="6" Padding="0,7" HorizontalAlignment="Left"><StackPanel Orientation="Horizontal" Spacing="7"><FontIcon Glyph="&#xE73E;" FontSize="12" Foreground="{ThemeResource BrandBrush}"/><TextBlock Text="本地处理 · 离线可用" FontSize="12" Foreground="{ThemeResource BrandBrush}"/></StackPanel></Border>
+          <Border Background="Transparent" CornerRadius="6" Padding="0,7" HorizontalAlignment="Left"><StackPanel Orientation="Horizontal" Spacing="7"><FontIcon x:Name="ConnectionStatusIcon" Glyph="&#xE73E;" FontSize="12" Foreground="{ThemeResource BrandBrush}"/><TextBlock x:Name="ConnectionStatusText" Text="本地处理 · 离线可用" FontSize="12" Foreground="{ThemeResource BrandBrush}"/></StackPanel></Border>
         </StackPanel>
       </NavigationView.PaneFooter>
       <Grid Padding="28,18,28,22">
@@ -164,6 +164,8 @@
         </Grid>
         <local:UninstallerWorkspace x:Name="Uninstaller" Grid.Row="2" Visibility="Collapsed" Margin="0,0,4,0"/>
         <local:VideoWorkspace x:Name="VideoTools" Grid.Row="2" Visibility="Collapsed" Margin="0,0,4,0"/>
+        <local:SubtitleWorkspace x:Name="SubtitleTools" Grid.Row="2" Visibility="Collapsed" Margin="0,0,4,0"/>
+        <local:WebPdfWorkspace x:Name="WebPdfTools" Grid.Row="2" Visibility="Collapsed" Margin="0,0,4,0"/>
         <local:RecoveryWorkspace x:Name="Recovery" Grid.Row="2" Visibility="Collapsed" Margin="0,0,4,0"/>
         <local:ShopWorkspace x:Name="ShopArea" Grid.Row="1" Grid.RowSpan="2" Visibility="Collapsed" Margin="0,0,4,0"/>
         <InfoBar x:Name="StatusInfo" Grid.Row="3" IsOpen="False" IsClosable="True" Margin="0,8,4,0"/>

@@ -9,6 +9,16 @@
   ],
   "Components": [
     {
+      "Id": "webview2",
+      "Group": "网页转 PDF",
+      "Name": "Microsoft Edge WebView2",
+      "Purpose": "独立浏览器预览并在本机打印网页为 PDF；运行时由系统提供",
+      "NuGetPackage": "Microsoft.Web.WebView2",
+      "License": "Microsoft Software License Terms",
+      "ProjectUrl": "https://learn.microsoft.com/microsoft-edge/webview2/",
+      "AdditionalUrl": "https://github.com/MicrosoftEdge/WebView2Samples"
+    },
+    {
       "Id": "ffmpeg",
       "Group": "音视频转换与水印处理",
       "Name": "FFmpeg",
@@ -20,9 +30,9 @@
     },
     {
       "Id": "yt-dlp",
-      "Group": "视频链接下载",
+      "Group": "视频与字幕下载",
       "Name": "yt-dlp",
-      "Purpose": "解析公开链接与下载视频",
+      "Purpose": "解析公开链接、下载视频与网站字幕",
       "VersionSource": "video:ytDlp",
       "License": "Unlicense；随附 EJS 组件为 ISC / MIT",
       "ProjectUrl": "https://github.com/yt-dlp/yt-dlp"

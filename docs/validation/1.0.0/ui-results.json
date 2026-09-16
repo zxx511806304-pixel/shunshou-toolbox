@@ -1,0 +1,34 @@
+{
+  "Passed": true,
+  "Version": "1.0.0",
+  "Checks": [
+    "Actual WebView2 navigation and three-page selectable-text PDF, HTTP error, cancellation and non-overwrite output.",
+    "Subtitle UI analyzed a real local HTTP page and downloaded a text file through packaged yt-dlp.",
+    "Light \u2192 Dark \u2192 Light resource and rendered captures; mutually exclusive workspaces; online/local status follows selection."
+  ],
+  "WebPdf": {
+    "Passed": true,
+    "Pdf": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\v100-package-final\\web-pdf\\Shunshou Web PDF Check.pdf",
+    "DuplicatePdf": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\v100-package-final\\web-pdf\\Shunshou Web PDF Check (2).pdf",
+    "Pages": 3,
+    "A4Points": {
+      "Width": 594.95996,
+      "Height": 841.91998
+    },
+    "SelectableTextVerified": true,
+    "PrivateProfileVerified": true,
+    "InvalidUrlRejected": true,
+    "Http404Rejected": true,
+    "CancellationMilliseconds": 224,
+    "Render": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\v100-package-final\\web-pdf\\webpage-render.png",
+    "RuntimeVersion": "153.0.4234.32"
+  },
+  "Subtitles": {
+    "Passed": true,
+    "Tracks": 1,
+    "Output": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\v100-package-final\\subtitles\\subtitle_Subtitle verification (1)_zh-Hans_20260916_170119_e42c434b.txt",
+    "BadUrlRejected": true,
+    "ControlsEnabled": true
+  },
+  "NotCovered": "No unrelated feature regression; no system High Contrast or clean-PC session. External sites can change availability."
+}

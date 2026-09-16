@@ -1,0 +1,17 @@
+[
+  {
+    "Name": "ShunshouToolbox-1.0.0-win-x64-setup.exe",
+    "Bytes": 449612315,
+    "Sha256": "5554962f5bb9916beb191356ce46f4e2b2ac2bf8a2807dc6083f44f50e57e402"
+  },
+  {
+    "Name": "ShunshouToolbox-1.0.0-win-x64.zip",
+    "Bytes": 397695922,
+    "Sha256": "2b647fb33fef55959a00a3ccfdee5025ed2cfde4634e10888572dd92ae557379"
+  },
+  {
+    "Name": "RecoverySources-1.0.0.zip",
+    "Bytes": 126935471,
+    "Sha256": "9647a24ee6d63702e3b3fe05dfb3a63a80f430e73c34dbeae54b6f8788da2baf"
+  }
+]

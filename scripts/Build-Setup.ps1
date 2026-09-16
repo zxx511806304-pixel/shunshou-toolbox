@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '0.5.1',
+    [string]$Version = '1.0.0',
     [string]$PayloadZip = '',
     [string]$OutputRoot = '',
     [string]$Dotnet = ''
