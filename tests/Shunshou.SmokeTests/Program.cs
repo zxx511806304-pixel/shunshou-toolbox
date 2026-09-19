@@ -13,7 +13,9 @@ try
     else if (args.Contains("--compression-boundary")) await CompressionTests.RunBoundaryAsync(root);
     else if (args.Contains("--media-precision")) await MediaTests.RunPrecisionAsync(root);
     else if (args.Contains("--media")) await MediaTests.RunAsync(root);
+    else if (args.Contains("--indexed-search")) await FileTests.RunIndexedAsync(root, Environment.GetEnvironmentVariable("SHUNSHOU_SEARCH_RUNTIME"));
     else if (args.Contains("--files")) await FileTests.RunAsync(root);
+    else if (args.Contains("--pdf-layout")) await PdfLayoutTests.RunAsync(root);
     else if (args.Contains("--pdf")) await PdfTests.RunAsync(root);
     else if (args.Contains("--ocr")) await OcrTests.RunAsync(root);
     else if (args.Contains("--compression")) await CompressionTests.RunAsync(root);

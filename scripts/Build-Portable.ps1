@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '1.0.0',
+    [string]$Version = '1.0.1',
     [string]$OutputRoot = '',
     [string]$Dotnet = '',
     [switch]$SkipZip
@@ -17,6 +17,9 @@ if ([string]::IsNullOrWhiteSpace($Dotnet)) {
 if (-not $env:DOTNET_CLI_HOME) { $env:DOTNET_CLI_HOME = Join-Path $repoRoot '.tools/dotnet-home' }
 if (-not $env:NUGET_PACKAGES -and (Test-Path -LiteralPath (Join-Path $repoRoot '.tools/nuget'))) { $env:NUGET_PACKAGES = Join-Path $repoRoot '.tools/nuget' }
 $name = "ShunshouToolbox-$Version-win-x64"
+foreach ($requiredSearch in @('Everything.exe','es.exe','component-source.json','Everything-LICENSE.txt','ES-LICENSE.txt')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot ('runtime/everything/' + $requiredSearch)))) { throw 'Missing indexed search runtime. Run Download-Everything.ps1 first.' }
+}
 $final = Assert-ChildPath -Root $OutputRoot -Path (Join-Path $OutputRoot $name)
 $zip = $final + '.zip'
 if ((Test-Path -LiteralPath $final) -or (Test-Path -LiteralPath $zip)) { throw "Output already exists. Choose a new -Version or -OutputRoot; no previous package will be deleted: $final" }

@@ -1,0 +1,13 @@
+{
+  "Passed": true,
+  "Checks": [
+    "Real setup window uses the production RunAsync flow",
+    "Embedded payload deployed and UI controls recovered",
+    "Checked shortcut created in fixture Desktop",
+    "Fixture registration remembers target",
+    "Completion status and primary action fit the client area"
+  ],
+  "UserDesktopWrites": 0,
+  "UserRegistryWrites": 0,
+  "UserProgramLaunches": 0
+}

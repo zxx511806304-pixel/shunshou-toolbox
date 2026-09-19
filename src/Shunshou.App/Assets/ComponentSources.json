@@ -78,7 +78,7 @@
       "Id": "pdfsharp",
       "Group": "图片与 PDF",
       "Name": "PDFsharp",
-      "Purpose": "合并与拆分 PDF",
+      "Purpose": "合并、拆分 PDF，以及版式转换中的页面图形分离",
       "NuGetPackage": "PDFsharp",
       "License": "MIT",
       "ProjectUrl": "https://github.com/empira/PDFsharp"

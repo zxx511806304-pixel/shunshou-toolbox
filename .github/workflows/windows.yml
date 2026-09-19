@@ -36,6 +36,7 @@ jobs:
         run: |
           ./scripts/Download-Runtime.ps1
           ./scripts/Download-OcrModels.ps1
+          ./scripts/Download-Everything.ps1
           ./scripts/Download-Recovery.ps1
           ./scripts/Get-VideoDownloadRuntime.ps1
           ./scripts/Build-SttnModel.ps1 -Python '${{ steps.ai-python.outputs.python-path }}'

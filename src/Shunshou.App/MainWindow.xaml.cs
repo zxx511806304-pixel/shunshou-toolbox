@@ -149,6 +149,7 @@ public sealed partial class MainWindow : Window
         SetVisible(ImageQuality, imageConvert);
         SetVisible(AdvancedPanel, imageConvert);
         SetVisible(PdfPanel, pdfImages);
+        SetVisible(PdfOfficeMode, op is "PDF 转可编辑 Word" or "PDF 转可编辑 PPT");
         SetVisible(SearchWorkspace, op == "按名称搜索");
         SetVisible(GeneralArea, op != "按名称搜索" && !ocr && !software && !recovery && !videoTool && !subtitles && !webPdf);
         ResetSearchView();
@@ -180,7 +181,7 @@ public sealed partial class MainWindow : Window
             _ => ("拖入一个音频或视频文件", "转换为新文件，源文件保留", "转换常用音视频格式，或按提交要求调整大小。")
         };
         if (op is "PDF 转可编辑 Word" or "PDF 转可编辑 PPT")
-            Note("提取可编辑文字", "文档中的文字按阅读顺序生成段落，扫描页面自动识别中英文。");
+            Note("版式与编辑", "尽量保留文字样式、位置和页面图形。扫描页使用文字识别，复杂版式请对照原文检查。");
         else if (media)
             Note("转换与质量", "转为 MP3、MP4、M4A 通常会损失质量；FLAC 可保存解码后的无损音频。目标大小过小时，工具会提示无法达标。");
         RunButton.Content = ocr ? "开始识别" : op == "按名称搜索" ? "开始搜索" : op == "批量重命名" ? "预览重命名" : "开始处理";
@@ -275,6 +276,7 @@ public sealed partial class MainWindow : Window
         string query = SearchQuery.Text.Trim();
         string renamePrefix = RenamePrefix.Text;
         int renameStart = double.IsFinite(RenameStart.Value) ? (int)RenameStart.Value : 1;
+        bool preservePdfLayout = PdfOfficeMode.SelectedIndex == 0;
         if (op is "按上传上限压缩" or "按目标大小压缩" && maxBytes <= 0) { ShowError("请填写有效的大小上限。"); return; }
         if (op == "按名称搜索" && query.Length == 0) { ShowError("请输入要查找的名称。"); return; }
         if (op == "合并 PDF" && inputs.Length < 2) { ShowError("合并 PDF 至少需要两份文件。"); return; }
@@ -330,7 +332,10 @@ public sealed partial class MainWindow : Window
                         return SavedMany(await pdf.ExportImagesAsync(inputs[0], output, dpi, op == "PDF 转高清长图", progress, token), output);
                     case "PDF 转可编辑 Word":
                     case "PDF 转可编辑 PPT":
-                        return Saved(await pdf.ExportEditableAsync(inputs[0], output, op.EndsWith("Word") ? "docx" : "pptx", progress, token));
+                        string pdfReport = "";
+                        var pdfProgress = new ImmediateToolProgress(report => { pdfReport = report.Message; progress.Report(report); });
+                        var converted = Saved(await pdf.ExportEditableAsync(inputs[0], output, op.EndsWith("Word") ? "docx" : "pptx", pdfProgress, token, preservePdfLayout));
+                        return converted with { Message = converted.Message + "\n" + pdfReport };
                     case "合并 PDF":
                         return Saved(await pdf.MergeAsync(inputs, output, progress, token));
                     case "拆分 PDF":
@@ -382,8 +387,13 @@ public sealed partial class MainWindow : Window
         foreach (Control control in new Control[] { TargetSize, AllowLossy, AllowResize, FormatBox, ImageQuality, PdfDpi, SearchQuery, ImagesOnly, RenamePrefix, RenameStart, OutputDirectory, ImageWidth })
             control.IsEnabled = !busy;
         AllowResize.IsEnabled = !busy && AllowLossy.IsChecked == true;
-        SearchScopeBox.IsEnabled = ChooseSearchFolderButton.IsEnabled = !busy;
+        SearchScopeBox.IsEnabled = ChooseSearchFolderButton.IsEnabled = SearchEngineBox.IsEnabled = EnableSearchIndexButton.IsEnabled = PdfOfficeMode.IsEnabled = !busy;
         CancelButton.IsEnabled = busy;
+    }
+
+    private sealed class ImmediateToolProgress(Action<ToolProgress> report) : IProgress<ToolProgress>
+    {
+        public void Report(ToolProgress value) => report(value);
     }
 
     private void Lossy_Changed(object sender, RoutedEventArgs args)
@@ -405,6 +415,14 @@ public sealed partial class MainWindow : Window
     private async void Root_Loaded(object sender, RoutedEventArgs args)
     {
         var commandArgs = Environment.GetCommandLineArgs();
+        int fixVerifyIndex = Array.IndexOf(commandArgs, "--verify-v101");
+        if (fixVerifyIndex >= 0)
+        {
+            if (fixVerifyIndex + 2 >= commandArgs.Length) { Environment.Exit(2); return; }
+            int result = await VerifyV101Async(commandArgs[fixVerifyIndex + 1], commandArgs[fixVerifyIndex + 2]);
+            if (result != 0) Environment.Exit(result); else Close();
+            return;
+        }
         int releaseVerifyIndex = Array.IndexOf(commandArgs, "--verify-v100");
         if (releaseVerifyIndex >= 0)
         {

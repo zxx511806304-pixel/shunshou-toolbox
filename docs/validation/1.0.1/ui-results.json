@@ -1,0 +1,15 @@
+{
+  "Passed": true,
+  "Version": "1.0.1",
+  "Checks": [
+    "Real Everything IPC: repeated all-drive name queries, folder scope, files/folders and preview.",
+    "Image filter and explicitly selected ordinary-search fallback.",
+    "Actual UI PDF\u2192DOCX uses layout default and displays conversion result; Light\u2192Dark\u2192Light captures."
+  ],
+  "IndexedAllDriveQueryMilliseconds": [
+    305.976,
+    307.6856,
+    278.8621
+  ],
+  "NotCovered": "First-time UAC/index creation, clean PC, High Contrast and unrelated tools."
+}

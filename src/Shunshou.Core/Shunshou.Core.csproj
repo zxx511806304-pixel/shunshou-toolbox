@@ -12,6 +12,7 @@
     <PackageReference Include="DiscUtils.Ntfs" Version="0.16.13" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Shunshou.SmokeTests" />
     <EmbeddedResource Include="Resources/ShopResources.bin" LogicalName="Shunshou.Core.ShopResources.bin" />
   </ItemGroup>
 </Project>

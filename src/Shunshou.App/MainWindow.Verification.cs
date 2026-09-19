@@ -73,6 +73,7 @@ public sealed partial class MainWindow
 
             Navigation.SelectedItem = Navigation.MenuItems[4];
             SelectCategory("files");
+            SearchEngineBox.SelectedIndex = 1; // This older fixture specifically verifies directory traversal.
             RequireUi(SearchScopeBox.SelectedItem is SearchScope { Root: null, IsFolder: false }, "Default search scope is not all local drives");
             RequireUi(AcceptInputPaths([landscape]) && SearchQuery.Text == Path.GetFileName(landscape)
                 && _selectedSearchFolder == source, "File input did not choose its containing search folder and name");

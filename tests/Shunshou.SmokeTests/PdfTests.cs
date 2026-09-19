@@ -43,7 +43,7 @@ public static class PdfTests
 
         foreach (string format in new[] { "docx", "pptx" })
         {
-            string output = await service.ExportEditableAsync(input, Path.Combine(folder, "可编辑"), format);
+            string output = await service.ExportEditableAsync(input, Path.Combine(folder, "可编辑"), format, preserveLayout: false);
             Check(Path.GetFileName(output) == "中英文示例_text." + format, "可编辑文本导出保留原名称并使用英文后缀");
             using OpenXmlPackage package = format == "docx" ? WordprocessingDocument.Open(output, false) : PresentationDocument.Open(output, false);
             var errors = new OpenXmlValidator().Validate(package).ToArray();
@@ -76,7 +76,7 @@ public static class PdfTests
         }
         foreach (string format in new[] { "docx", "pptx" })
         {
-            string output = await service.ExportEditableAsync(scanned, Path.Combine(folder, "扫描件文字"), format);
+            string output = await service.ExportEditableAsync(scanned, Path.Combine(folder, "扫描件文字"), format, preserveLayout: false);
             using OpenXmlPackage package = format == "docx" ? WordprocessingDocument.Open(output, false) : PresentationDocument.Open(output, false);
             Check(!new OpenXmlValidator().Validate(package).Any(), $"扫描件 {format} 必须通过 OpenXml 验证");
             string text = package is WordprocessingDocument word
@@ -159,7 +159,7 @@ public static class PdfTests
         byte[] hash = SHA256.HashData(await File.ReadAllBytesAsync(mixedPath));
         foreach (string format in new[] { "docx", "pptx" })
         {
-            string output = await service.ExportEditableAsync(mixedPath, Path.Combine(folder, "混合页结果"), format);
+            string output = await service.ExportEditableAsync(mixedPath, Path.Combine(folder, "混合页结果"), format, preserveLayout: false);
             using OpenXmlPackage package = format == "docx" ? WordprocessingDocument.Open(output, false) : PresentationDocument.Open(output, false);
             var errors = new OpenXmlValidator().Validate(package).ToArray();
             Check(errors.Length == 0, $"混合页 {format} 结构错误：" + string.Join("; ", errors.Select(x => x.Description)));

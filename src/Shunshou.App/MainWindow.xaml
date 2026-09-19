@@ -77,6 +77,9 @@
                 <StackPanel x:Name="PdfPanel" Spacing="8" Visibility="Collapsed"><NumberBox x:Name="PdfDpi" Header="导出分辨率（DPI）" Value="150" Minimum="72" Maximum="600" SmallChange="50" Width="220" HorizontalAlignment="Left" SpinButtonPlacementMode="Compact" AutomationProperties.Name="PDF图片分辨率"/><TextBlock Text="默认 150 DPI；精细文字可选 300 DPI。长图采用 PNG，不自动降低清晰度，页数多时会占用更多内存。" Style="{StaticResource MutedTextStyle}"/></StackPanel>
                 <StackPanel x:Name="RenamePanel" Orientation="Horizontal" Spacing="16" Visibility="Collapsed"><TextBox x:Name="RenamePrefix" Header="统一名称前缀" Text="资料" MinWidth="220"/><NumberBox x:Name="RenameStart" Header="起始序号" Value="1" Minimum="0" Width="150" SpinButtonPlacementMode="Compact"/></StackPanel>
                 <InfoBar x:Name="FeatureNote" IsOpen="False" IsClosable="False" Severity="Informational"/>
+                <ComboBox x:Name="PdfOfficeMode" Header="转换方式" SelectedIndex="0" Visibility="Collapsed" MinWidth="240" AutomationProperties.Name="PDF 转换方式">
+                  <ComboBoxItem Content="尽量保留版式"/><ComboBoxItem Content="仅提取可编辑文字"/>
+                </ComboBox>
                 <Grid x:Name="OutputPanel" ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="OutputDirectory" Header="保存到" AutomationProperties.Name="输出文件夹"/><Button Grid.Column="1" Content="浏览…" VerticalAlignment="Bottom" Click="ChooseOutput_Click" AutomationProperties.Name="选择输出文件夹"/></Grid>
                 <Expander x:Name="AdvancedPanel" Header="更多图片设置" HorizontalAlignment="Stretch" Visibility="Collapsed"><NumberBox x:Name="ImageWidth" Header="最大宽度（像素，0 表示保持原尺寸）" Value="0" Minimum="0" Maximum="50000" Width="340" HorizontalAlignment="Left" SpinButtonPlacementMode="Compact"/></Expander>
               </StackPanel>
@@ -94,6 +97,12 @@
                 <TextBox x:Name="SearchQuery" Header="要查找的名称" PlaceholderText="输入名称，按 Enter 搜索" KeyDown="SearchQuery_KeyDown" AutomationProperties.Name="要查找的文件或文件夹名称"/>
                 <ComboBox x:Name="SearchScopeBox" Grid.Column="1" Header="搜索范围" HorizontalAlignment="Stretch" SelectionChanged="SearchScope_Changed" AutomationProperties.Name="搜索范围"/>
                 <CheckBox x:Name="ImagesOnly" Grid.Column="2" Content="只看图片" VerticalAlignment="Bottom" Margin="0,0,0,3"/>
+              </Grid>
+              <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="160"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <ComboBox x:Name="SearchEngineBox" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="SearchEngine_Changed" AutomationProperties.Name="搜索方式"><ComboBoxItem Content="快速搜索"/><ComboBoxItem Content="普通搜索"/></ComboBox>
+                <TextBlock x:Name="SearchIndexStatus" Grid.Column="1" Text="正在连接本机索引…" Style="{StaticResource MutedTextStyle}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                <Button x:Name="EnableSearchIndexButton" Grid.Column="2" Content="启用快速搜索" Visibility="Collapsed" Click="EnableSearchIndex_Click"/>
               </Grid>
               <Grid x:Name="SearchFolderPanel" Visibility="Collapsed" ColumnSpacing="10">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>

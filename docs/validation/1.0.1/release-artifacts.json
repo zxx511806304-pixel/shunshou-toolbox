@@ -1,0 +1,16 @@
+{
+  "Version": "1.0.1",
+  "Artifacts": [
+    {
+      "Name": "ShunshouToolbox-1.0.1-win-x64-setup.exe",
+      "Bytes": 452593203,
+      "Sha256": "fe437463dafd2edd2ebe0eff0e77af5ddd5b20cd478a2a50f0551579565ce22a"
+    },
+    {
+      "Name": "ShunshouToolbox-1.0.1-win-x64.zip",
+      "Bytes": 400676837,
+      "Sha256": "b174e2743bd0aba8c5733aa4275d75a3d05d19f3e8efea930feff2895e54b765"
+    }
+  ],
+  "Verification": "Focused PDF layout and Everything tests; packaged app UI and isolated setup flow passed. Only packaged documentation changed after those runs, application files were unchanged."
+}

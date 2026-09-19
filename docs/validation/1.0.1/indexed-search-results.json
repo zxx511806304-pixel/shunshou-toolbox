@@ -1,0 +1,16 @@
+{
+  "ExistingIndex": true,
+  "FirstFixtureVisibilityMs": 816.7636,
+  "Query": "Shunshou",
+  "ResultCount": 289,
+  "QueryMilliseconds": [
+    334.7414,
+    337.3352,
+    314.995,
+    340.9216,
+    321.7752
+  ],
+  "IncludesCliProcessStartup": true,
+  "FreshIndexBuildMeasured": false,
+  "FixtureChecksPassed": true
+}

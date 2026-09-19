@@ -1,0 +1,84 @@
+{
+  "input": "pdf-layout/office/styled-table-picture-form_layout.docx",
+  "sha256": "41dcb353c93ccdadac7a4654edc2b433b3324de3e94e625876b8b85fc70d86f4",
+  "rendered_pdf": "rendered-word/styled-table-picture-form_layout.pdf",
+  "rendered_pdf_sha256": "70c68bbee6252c6adb5b3971b8e06cec2c8924e2a8a24a49513e9a3860694398",
+  "label": "VERTICAL",
+  "glyphs": [
+    {
+      "text": "V",
+      "bounds_pdf_points": [
+        553.29,
+        81.283,
+        560.45,
+        87.613
+      ]
+    },
+    {
+      "text": "E",
+      "bounds_pdf_points": [
+        553.29,
+        87.143,
+        560.45,
+        93.803
+      ]
+    },
+    {
+      "text": "R",
+      "bounds_pdf_points": [
+        553.29,
+        93.813,
+        560.45,
+        100.643
+      ]
+    },
+    {
+      "text": "T",
+      "bounds_pdf_points": [
+        553.29,
+        101.643,
+        560.45,
+        107.443
+      ]
+    },
+    {
+      "text": "I",
+      "bounds_pdf_points": [
+        553.29,
+        107.063,
+        560.45,
+        109.513
+      ]
+    },
+    {
+      "text": "C",
+      "bounds_pdf_points": [
+        553.17,
+        110.203,
+        560.56,
+        116.593
+      ]
+    },
+    {
+      "text": "A",
+      "bounds_pdf_points": [
+        553.29,
+        116.303,
+        560.45,
+        122.663
+      ]
+    },
+    {
+      "text": "L",
+      "bounds_pdf_points": [
+        553.29,
+        123.593,
+        560.45,
+        128.433
+      ]
+    }
+  ],
+  "column_left_span_points": 0.12,
+  "crop": "word-vertical-crop.png",
+  "visual_inspection": "pass_full_VERTICAL_visible_no_wrapping_or_clipping"
+}

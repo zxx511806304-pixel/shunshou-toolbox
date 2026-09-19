@@ -1,5 +1,9 @@
 # 第三方组件说明
 
+## 1.0.1 文件索引与 PDF 版式
+
+文件搜索集成 Everything 1.4.1.1032 与官方 ES 1.1.0.38，使用本机 IPC 查询。保留原始 [Everything 许可](https://www.voidtools.com/License.txt) 和 [ES 源码许可](https://github.com/voidtools/ES)，文件位于 `app/tools/everything`；下载来源与 SHA256 由 `runtime-lock.json` 固定。PDF 版式转换沿用 PdfPig、PDFsharp、Open XML SDK 与 Windows PDF 渲染，无新增在线转换服务。LibreOffice 仅用于开发阶段的导出文件显示验证，不随应用分发。
+
 ## 1.0.0 视频、字幕与网页工具
 
 网页预览及 PDF 保存使用 Microsoft Edge WebView2 SDK（随 WinUI 依赖），配合用户系统中的 Evergreen Runtime。运行时不打包进本产品，缺少时提供 Microsoft 官方安装页面。SDK 的实际版本及许可原文列入随包 NuGet 清单。原项目与文档：[WebView2](https://learn.microsoft.com/microsoft-edge/webview2/) / [官方示例](https://github.com/MicrosoftEdge/WebView2Samples)。字幕下载复用下述 yt-dlp、CPython 及 FFmpeg 组件，没有新增在线翻译服务。
@@ -57,7 +61,7 @@ FFmpeg 是独立进程，通过命令行读取本地文件。分发包含未经�
 
 根目录的启动器由本项目 C 源码使用 [Zig 0.15.2](https://ziglang.org/download/0.15.2/) 构建。Zig 编译器仅用于构建，不装入成品；涉及的 Zig 与 MinGW-w64 启动代码声明保留在 `docs/licenses/native-launcher`。启动器使用 Windows 系统 API 与系统 Universal CRT，不另打包一套 .NET 或 Visual C++ 可再分发运行库。
 
-运行 Windows PDF 等系统 API 不意味着本软件获得 Microsoft Office、WPS、WinRAR、Everything 或商业 PDF SDK 的再分发权。本初版没有打包这些产品。
+运行 Windows PDF 等系统 API 不意味着本软件获得 Microsoft Office、WPS、WinRAR 或商业 PDF SDK 的再分发权。本软件没有打包这些产品；Everything 与 ES 按前述各自许可随包分发。
 
 ## 卸载模块的研究参考
 

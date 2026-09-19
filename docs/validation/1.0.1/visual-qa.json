@@ -1,0 +1,70 @@
+{
+  "renderer": "LibreOffice 26.2.6.3 on Windows, extracted administrative image with an isolated temporary profile",
+  "renderer_setup": "Official TDF MSI matched SHA256 f9877032fd908beb9c0ddf06df4af5c2e85f419c42e14876c4cce5aae5fb2660; not installed or bundled with the application.",
+  "rasterization": "Poppler, 144 DPI",
+  "source_pdf": "pdf-layout/styled-table-picture-form.pdf",
+  "source_pngs": [
+    "rendered-source/page-1.png",
+    "rendered-source/page-2.png",
+    "rendered-source/page-3.png"
+  ],
+  "visual_checks": [
+    "Colored bold title",
+    "Picture position and colors",
+    "Table lines with editable cell labels",
+    "Nested PDF form background and text",
+    "Two italic text columns",
+    "No clipping or overlapping letters",
+    "Blank middle page",
+    "Landscape final page",
+    "Rotated VERTICAL label orientation",
+    "Hidden and image-covered native text stays invisible"
+  ],
+  "records": {
+    "word": {
+      "input": "pdf-layout/office/styled-table-picture-form_layout.docx",
+      "sha256": "41dcb353c93ccdadac7a4654edc2b433b3324de3e94e625876b8b85fc70d86f4",
+      "rendered_pdf": "rendered-word/styled-table-picture-form_layout.pdf",
+      "inspected_pngs": [
+        "rendered-word/page-1.png",
+        "rendered-word/page-2.png",
+        "rendered-word/page-3.png"
+      ],
+      "pages": 3,
+      "max_horizontal_text_origin_delta_points": 0.1,
+      "max_vertical_text_origin_delta_points": 1.951,
+      "hidden_or_covered_text_reintroduced": false,
+      "visual_result": "pass_for_fixture",
+      "rendered_pdf_sha256": "70c68bbee6252c6adb5b3971b8e06cec2c8924e2a8a24a49513e9a3860694398",
+      "quarter_turn_label_verification": "word-vertical-verification.json",
+      "inspected_detail_crop": "word-vertical-crop.png",
+      "final_revision_check": "Final production export was rendered again; the corrected rotation region was inspected at full resolution."
+    },
+    "ppt": {
+      "input": "pdf-layout/office/styled-table-picture-form_layout.pptx",
+      "sha256": "86e457eda47165508964f082e4dec2405d375597002770d1ff2ffbeaad7b38bd",
+      "rendered_pdf": "rendered-ppt/styled-table-picture-form_layout.pdf",
+      "inspected_pngs": [
+        "rendered-ppt/page-1.png",
+        "rendered-ppt/page-2.png",
+        "rendered-ppt/page-3.png"
+      ],
+      "pages": 3,
+      "max_horizontal_text_origin_delta_points": 0.041,
+      "max_vertical_text_origin_delta_points": 1.988,
+      "hidden_or_covered_text_reintroduced": false,
+      "visual_result": "pass_for_fixture"
+    }
+  },
+  "scope_notes": [
+    "These are representative fixture checks, not an exact layout guarantee for arbitrary PDFs or Microsoft Office/WPS versions.",
+    "Graphics and table rules remain a page graphics layer; visible text is editable.",
+    "Word preserves per-page dimensions; PPT fits mixed-size pages proportionally into one presentation canvas.",
+    "Horizontal-text origin differences are under 2 points in this fixture; arbitrary non-quarter-turn rotations were not visually verified."
+  ],
+  "fixes_found_by_rendering": [
+    "Word and PPT line spacing caused downward baseline drift; exact font line spacing reduced it.",
+    "Word readers kept text upright when only shape rotation was supplied; 90/270 degree text uses native vertical textbox direction.",
+    "The trailing L of a vertical italic label wrapped into a clipped column; extra trailing frame room now keeps all eight glyphs visible in one column."
+  ]
+}

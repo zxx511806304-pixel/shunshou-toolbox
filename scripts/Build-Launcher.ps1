@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory)][string]$OutputPath,
-    [string]$Version = '1.0.0'
+    [string]$Version = '1.0.1'
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Runtime.Common.ps1')

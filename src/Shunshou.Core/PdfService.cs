@@ -17,7 +17,7 @@ using WindowsPdf = Windows.Data.Pdf.PdfDocument;
 
 namespace Shunshou.Core;
 
-public sealed class PdfService
+public sealed partial class PdfService
 {
     public async Task<IReadOnlyList<string>> ExportImagesAsync(string input, string outputDir, int dpi,
         bool longImage, IProgress<ToolProgress>? progress = null, CancellationToken ct = default)
@@ -71,10 +71,11 @@ public sealed class PdfService
         finally { CleanupStaging(staging); }
     }
 
-    /// <summary>Exports editable text in reading order, preserving page structure and text positions in slides.</summary>
+    /// <summary>Preserves page artwork and editable positioned text by default; optional text extraction supports OCR/reflow.</summary>
     public async Task<string> ExportEditableAsync(string input, string outputDir, string format,
-        IProgress<ToolProgress>? progress = null, CancellationToken ct = default)
+        IProgress<ToolProgress>? progress = null, CancellationToken ct = default, bool preserveLayout = true)
     {
+        if (preserveLayout) return await ExportLayoutAsync(input, outputDir, format, progress, ct);
         ValidateInput(input);
         format = format.TrimStart('.').ToLowerInvariant();
         if (format is not ("docx" or "pptx")) throw new ArgumentException("可编辑导出只支持 DOCX 和 PPTX。", nameof(format));

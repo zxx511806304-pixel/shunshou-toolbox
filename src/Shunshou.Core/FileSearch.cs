@@ -8,12 +8,18 @@ public sealed record FileSearchDrive(string RootPath, string DisplayName, bool I
 /// <summary>Results is a detached batch, not the complete accumulated result list.</summary>
 public sealed record FileSearchUpdate(IReadOnlyList<FileSearchResult> Results,
     long ScannedEntries, long ScannedDirectories, long SkippedEntries, int MatchedCount,
-    string CurrentDirectory, bool IsCompleted);
+    string CurrentDirectory, bool IsCompleted)
+{
+    public bool IsIndexed { get; init; }
+}
 
 /// <summary>Cancellation and the result limit retain results. SearchedRoots == 0 means no root was readable.</summary>
 public sealed record FileSearchSummary(IReadOnlyList<FileSearchResult> Results,
     long ScannedEntries, long ScannedDirectories, long SkippedEntries,
-    bool IsTruncated, bool IsCancelled, TimeSpan Elapsed, int RequestedRoots, int SearchedRoots);
+    bool IsTruncated, bool IsCancelled, TimeSpan Elapsed, int RequestedRoots, int SearchedRoots)
+{
+    public bool IsIndexed { get; init; }
+}
 
 public sealed partial class FileService
 {
