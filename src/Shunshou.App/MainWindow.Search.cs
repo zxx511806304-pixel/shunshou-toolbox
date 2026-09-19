@@ -20,7 +20,7 @@ public sealed partial class MainWindow
     private CancellationTokenSource? _selectedPreviewCancellation;
     private string? _selectedSearchFolder;
     private long _searchGeneration;
-    private readonly EverythingSearchService _indexedSearch = new();
+    private IIndexedFileSearchService _indexedSearch = new EverythingSearchService();
     private bool _searchIndexConnected;
 
     private sealed record SearchScope(string Label, string? Root = null, bool IsFolder = false)
@@ -42,47 +42,44 @@ public sealed partial class MainWindow
 
     private async Task RefreshSearchIndexAsync()
     {
+        long generation = _searchGeneration;
+        var service = _indexedSearch;
         try
         {
-            var status = await _indexedSearch.GetStatusAsync();
-            _searchIndexConnected = status.State == EverythingIndexState.Ready;
-            if (SearchEngineBox.SelectedIndex == 0)
-            {
-                SearchIndexStatus.Text = _searchIndexConnected ? status.Message : status.State == EverythingIndexState.NeedsEnable
-                    ? "首次启用需 Windows 授权并建立索引。" : status.Message;
-                SetVisible(EnableSearchIndexButton, status.State is EverythingIndexState.NeedsEnable or EverythingIndexState.Loading);
-                EnableSearchIndexButton.Content = status.State == EverythingIndexState.Loading ? "等待索引就绪" : "启用快速搜索";
-            }
-        }
-        catch (Exception ex) { SearchIndexStatus.Text = ex.Message; _searchIndexConnected = false; }
-    }
-
-    private async void SearchEngine_Changed(object sender, SelectionChangedEventArgs args)
-    {
-        if (SearchIndexStatus == null) return;
-        if (SearchEngineBox.SelectedIndex == 0) await RefreshSearchIndexAsync();
-        else { SearchIndexStatus.Text = "逐个查找，适合未建立索引的位置。"; EnableSearchIndexButton.Visibility = Visibility.Collapsed; }
-    }
-
-    private async void EnableSearchIndex_Click(object sender, RoutedEventArgs args)
-    {
-        if (_busy) return;
-        _cancellation = new CancellationTokenSource();
-        var cancellation = _cancellation;
-        SetBusy(true);
-        TaskProgress.IsIndeterminate = true;
-        try
-        {
-            var status = await _indexedSearch.EnableAsync(new Progress<ToolProgress>(p => ProgressText.Text = p.Message), cancellation.Token);
+            var status = await service.GetStatusAsync();
+            if (_busy || generation != _searchGeneration || !ReferenceEquals(service, _indexedSearch)) return;
             _searchIndexConnected = status.State == EverythingIndexState.Ready;
             SearchIndexStatus.Text = status.Message;
-            ProgressText.Text = status.Message;
-            SetVisible(EnableSearchIndexButton, !_searchIndexConnected);
         }
-        catch (OperationCanceledException) { ProgressText.Text = "已停止等待索引"; }
-        catch (Exception ex) { ShowError(ex.Message); }
-        finally { TaskProgress.IsIndeterminate = false; SetBusy(false); cancellation.Dispose(); _cancellation = null; }
-        if (_searchIndexConnected && !string.IsNullOrWhiteSpace(SearchQuery.Text)) await RunSearchAsync();
+        catch (Exception ex)
+        {
+            if (_busy || generation != _searchGeneration || !ReferenceEquals(service, _indexedSearch)) return;
+            SearchIndexStatus.Text = ex.Message;
+            _searchIndexConnected = false;
+        }
+    }
+
+    private async Task PrepareSearchIndexAsync(IProgress<ToolProgress> progress, CancellationToken ct)
+    {
+        _searchIndexConnected = false;
+        var status = await _indexedSearch.GetStatusAsync(ct);
+        if (status.State is EverythingIndexState.NeedsEnable or EverythingIndexState.Loading)
+        {
+            progress.Report(new(0, status.Message));
+            // The search click is the explicit action that may request Windows consent.
+            // Status checks during window creation remain read-only.
+            status = await _indexedSearch.EnableAsync(progress, ct);
+        }
+        while (status.State == EverythingIndexState.Loading)
+        {
+            progress.Report(new(0, "正在建立文件索引，完成后自动显示结果，无需重复操作…"));
+            await Task.Delay(500, ct);
+            status = await _indexedSearch.GetStatusAsync(ct);
+        }
+        ct.ThrowIfCancellationRequested();
+        SearchIndexStatus.Text = status.Message;
+        _searchIndexConnected = status.State == EverythingIndexState.Ready;
+        if (!_searchIndexConnected) throw new InvalidOperationException(status.Message);
     }
 
     private void SearchScope_Changed(object sender, SelectionChangedEventArgs args)
@@ -154,6 +151,7 @@ public sealed partial class MainWindow
 
     private async Task RunSearchAsync()
     {
+        if (_busy) return;
         string query = SearchQuery.Text.Trim();
         if (query.Length == 0) { ShowError("请输入要查找的名称。"); SearchQuery.Focus(FocusState.Programmatic); return; }
         var scope = SearchScopeBox.SelectedItem as SearchScope;
@@ -166,13 +164,6 @@ public sealed partial class MainWindow
         else if (scope?.Root != null) roots = [scope.Root];
         else roots = new FileService().GetLocalDrives().Select(d => d.RootPath).ToArray();
         if (roots.Length == 0) { ShowError("没有找到可读取的本机磁盘。"); return; }
-        bool indexed = SearchEngineBox.SelectedIndex == 0;
-        if (indexed && !_searchIndexConnected)
-        {
-            await RefreshSearchIndexAsync();
-            if (!_searchIndexConnected) { SearchIndexStatus.Text = "请先启用快速搜索，或选择普通搜索。"; return; }
-        }
-
         ResetSearchView();
         long generation = _searchGeneration;
         bool imagesOnly = ImagesOnly.IsChecked == true;
@@ -181,20 +172,25 @@ public sealed partial class MainWindow
         SetBusy(true);
         StatusInfo.IsOpen = false;
         TaskProgress.IsIndeterminate = true;
-        ProgressText.Text = "正在搜索…";
+        ProgressText.Text = "正在准备搜索…";
         SearchEmptyText.Text = "正在查找匹配的名称…";
         IProgress<FileSearchUpdate> progress = new Progress<FileSearchUpdate>(update =>
         {
             if (generation != _searchGeneration || !_busy) return;
             AppendSearchResults(update.Results);
-            ProgressText.Text = update.IsIndexed ? $"查询本机索引 · 找到 {update.MatchedCount:N0} 项"
-                : $"已扫描 {update.ScannedEntries:N0} 项 · 找到 {update.MatchedCount:N0} 项";
+            ProgressText.Text = $"查询本机索引 · 找到 {update.MatchedCount:N0} 项";
         });
+        bool preparingIndex = true;
         try
         {
-            var result = indexed
-                ? await _indexedSearch.SearchAsync(roots, query, imagesOnly, progress, cancellation.Token)
-                : await new FileService().SearchRootsAsync(roots, query, imagesOnly, progress, cancellation.Token);
+            await PrepareSearchIndexAsync(new Progress<ToolProgress>(update =>
+            {
+                if (generation != _searchGeneration || !_busy || !preparingIndex) return;
+                SearchIndexStatus.Text = ProgressText.Text = SearchEmptyText.Text = update.Message;
+            }), cancellation.Token);
+            preparingIndex = false;
+            ProgressText.Text = "正在搜索…";
+            var result = await _indexedSearch.SearchAsync(roots, query, imagesOnly, progress, cancellation.Token);
             AppendSearchResults(result.Results);
             ProgressText.Text = $"{(result.IsCancelled ? "搜索已停止" : "搜索完成")} · 找到 {result.Results.Count:N0} 项 · {result.Elapsed.TotalSeconds:0.0} 秒";
             SearchEmptyText.Text = result.IsCancelled ? "搜索已停止，尚未找到匹配项" : "没有找到匹配项，请换个名称试试";
@@ -205,12 +201,19 @@ public sealed partial class MainWindow
             else if (result.SkippedEntries > 0)
                 ProgressText.Text += $" · 跳过 {result.SkippedEntries:N0} 个无法访问的项目";
         }
-        catch (OperationCanceledException) { ProgressText.Text = $"搜索已停止 · 保留 {_searchRows.Count:N0} 项结果"; }
+        catch (OperationCanceledException)
+        {
+            SearchEmptyText.Text = "搜索已停止";
+            ProgressText.Text = $"搜索已停止 · 保留 {_searchRows.Count:N0} 项结果";
+            if (!_searchIndexConnected) SearchIndexStatus.Text = "已停止等待索引，再次点击搜索可继续。";
+        }
         catch (Exception ex)
         {
             ProgressText.Text = "搜索未完成";
+            SearchEmptyText.Text = "搜索未完成，请查看提示后重试";
+            SearchIndexStatus.Text = ex.Message;
+            _searchIndexConnected = false;
             ShowError(ex.Message);
-            if (indexed) await RefreshSearchIndexAsync();
         }
         finally
         {

@@ -9,6 +9,16 @@
   ],
   "Components": [
     {
+      "Id": "screen-recorder",
+      "Group": "屏幕录制",
+      "Name": "ScreenRecorderLib",
+      "Purpose": "本地屏幕与区域录制、H.264/AAC 编码、系统声音与麦克风、暂停和继续",
+      "NuGetPackage": "ScreenRecorderLib",
+      "License": "MIT；完整许可见 docs/licenses/ScreenRecorderLib-MIT.txt",
+      "ProjectUrl": "https://github.com/sskodje/ScreenRecorderLib",
+      "AdditionalUrl": "https://www.nuget.org/packages/ScreenRecorderLib/6.6.0"
+    },
+    {
       "Id": "webview2",
       "Group": "网页转 PDF",
       "Name": "Microsoft Edge WebView2",

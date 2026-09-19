@@ -1,5 +1,9 @@
 # 第三方组件说明
 
+## 1.0.2 屏幕录制
+
+本地屏幕录制使用 [ScreenRecorderLib 6.6.0](https://github.com/sskodje/ScreenRecorderLib/tree/v6.6.0)，通过 Windows Desktop Duplication、Media Foundation 与 WASAPI 捕获并编码 MP4。NuGet 包 SHA256 为 `5e6c558d27fd4605bbafa608b8859c9b91841f56836d583391a0bd70f4c73641`；上游 MIT 许可正文随包保留于 `docs/licenses/ScreenRecorderLib-MIT.txt`。屏幕区域选择及快捷键使用 Windows 公共 API，不安装捕获驱动。
+
 ## 1.0.1 文件索引与 PDF 版式
 
 文件搜索集成 Everything 1.4.1.1032 与官方 ES 1.1.0.38，使用本机 IPC 查询。保留原始 [Everything 许可](https://www.voidtools.com/License.txt) 和 [ES 源码许可](https://github.com/voidtools/ES)，文件位于 `app/tools/everything`；下载来源与 SHA256 由 `runtime-lock.json` 固定。PDF 版式转换沿用 PdfPig、PDFsharp、Open XML SDK 与 Windows PDF 渲染，无新增在线转换服务。LibreOffice 仅用于开发阶段的导出文件显示验证，不随应用分发。

@@ -1,0 +1,16 @@
+{
+  "Version": "1.0.2",
+  "Artifacts": [
+    {
+      "Name": "ShunshouToolbox-1.0.2-win-x64-setup.exe",
+      "Bytes": 453348227,
+      "Sha256": "fac6e9a54982864c54bb55584a1709ee3578f266adb392be66dcd2a4b53ee820"
+    },
+    {
+      "Name": "ShunshouToolbox-1.0.2-win-x64.zip",
+      "Bytes": 401432377,
+      "Sha256": "88d3690d96817b9a5a1cac144e9af985b838d7743519438214cd3548f4b83ae1"
+    }
+  ],
+  "Verification": "Focused recording and single-button search checks; final packaged recording UI and isolated installer flow passed. System audio content and microphone capture not verified on this muted test machine."
+}

@@ -1,0 +1,70 @@
+<UserControl x:Class="Shunshou.App.ScreenRecordingWorkspace" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid RowSpacing="12">
+    <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Spacing="14" Padding="0,0,4,4">
+        <ContentControl x:Name="SettingsPanel" IsTabStop="False" HorizontalContentAlignment="Stretch"><StackPanel Spacing="14">
+          <Border Style="{StaticResource CardStyle}" Padding="16">
+            <StackPanel Spacing="12">
+              <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="180"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <ComboBox x:Name="DisplayBox" Header="显示器" HorizontalAlignment="Stretch" SelectionChanged="Display_Changed"/>
+                <ComboBox x:Name="ScopeBox" Grid.Column="1" Header="范围" HorizontalAlignment="Stretch" SelectionChanged="Scope_Changed"><ComboBoxItem Content="整个屏幕"/><ComboBoxItem Content="自选区域"/></ComboBox>
+                <Button x:Name="RegionButton" Grid.Column="2" Content="框选区域" VerticalAlignment="Bottom" Click="SelectRegion_Click" IsEnabled="False"/>
+              </Grid>
+              <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock x:Name="RegionText" Text="正在读取显示器…" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Content="刷新设备" Click="Refresh_Click"/>
+              </Grid>
+            </StackPanel>
+          </Border>
+          <Border Style="{StaticResource CardStyle}">
+            <StackPanel Spacing="14">
+              <TextBlock Text="画面与声音" FontSize="17"/>
+              <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="170"/></Grid.ColumnDefinitions>
+                <ComboBox x:Name="PresetBox" Header="画质预设" HorizontalAlignment="Stretch" SelectionChanged="Preset_Changed"><ComboBoxItem Content="高清（推荐）"/><ComboBoxItem Content="高画质 / 高帧率"/><ComboBoxItem Content="小体积"/><ComboBoxItem Content="自定义"/></ComboBox>
+                <ComboBox x:Name="ResolutionBox" Grid.Column="1" Header="分辨率" HorizontalAlignment="Stretch" SelectionChanged="Option_Changed"><ComboBoxItem Content="原始分辨率"/><ComboBoxItem Content="最高 1080p"/><ComboBoxItem Content="最高 720p"/></ComboBox>
+                <NumberBox x:Name="FrameRateBox" Grid.Column="2" Header="帧率（FPS）" Value="30" Minimum="1" Maximum="120" SmallChange="1" LargeChange="30" SpinButtonPlacementMode="Compact" ValueChanged="Number_Changed"/>
+              </Grid>
+              <StackPanel Orientation="Horizontal" Spacing="22">
+                <CheckBox x:Name="SystemAudioBox" Content="系统声音" IsChecked="True" Checked="Sound_Changed" Unchecked="Sound_Changed"/>
+                <CheckBox x:Name="MicrophoneBox" Content="麦克风" Checked="Sound_Changed" Unchecked="Sound_Changed"/>
+                <CheckBox x:Name="CursorBox" Content="显示鼠标" IsChecked="True"/>
+              </StackPanel>
+              <TextBlock x:Name="MutedAudioHint" Text="当前系统声音已静音，录制可能没有系统声音。" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" Visibility="Collapsed"/>
+              <TextBlock x:Name="EncodingSummary" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"/>
+              <Expander x:Name="AdvancedExpander" Header="高级设置" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                <StackPanel Spacing="14">
+                  <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <StackPanel Spacing="8"><CheckBox x:Name="AutoBitrateBox" Content="自动匹配视频码率" IsChecked="True" Checked="Bitrate_Changed" Unchecked="Bitrate_Changed"/><NumberBox x:Name="BitrateBox" Header="视频码率（Mbps）" Value="8" Minimum="0.5" Maximum="100" SmallChange="0.5" SpinButtonPlacementMode="Compact" IsEnabled="False" ValueChanged="Number_Changed"/></StackPanel>
+                    <ComboBox x:Name="AudioBitrateBox" Grid.Column="1" Header="音频码率（kbps）" VerticalAlignment="Bottom" HorizontalAlignment="Stretch"><ComboBoxItem Content="96"/><ComboBoxItem Content="128"/><ComboBoxItem Content="160"/><ComboBoxItem Content="192"/></ComboBox>
+                  </Grid>
+                  <TextBlock Text="码率越高，文件通常越大；实际大小取决于画面变化。分辨率按原比例缩小，不拉伸。" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"/>
+                  <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <ComboBox x:Name="SystemDeviceBox" Header="系统声音设备" HorizontalAlignment="Stretch" SelectionChanged="AudioDevice_Changed"/>
+                    <ComboBox x:Name="MicrophoneDeviceBox" Grid.Column="1" Header="麦克风设备" HorizontalAlignment="Stretch" IsEnabled="False"/>
+                  </Grid>
+                  <CheckBox x:Name="HardwareBox" Content="优先使用硬件编码" IsChecked="True"/>
+                  <CheckBox x:Name="MinimizeBox" Content="开始后最小化工具箱" IsChecked="True"/>
+                  <ComboBox x:Name="CountdownBox" Header="开始前倒计时" MinWidth="180"><ComboBoxItem Content="3 秒"/><ComboBoxItem Content="5 秒"/><ComboBoxItem Content="不倒计时"/></ComboBox>
+                </StackPanel>
+              </Expander>
+            </StackPanel>
+          </Border>
+          <Border Style="{StaticResource CardStyle}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBox x:Name="OutputBox" Header="保存到" AutomationProperties.Name="屏幕录制输出文件夹"/>
+            <Button Grid.Column="1" Content="浏览…" VerticalAlignment="Bottom" Click="Browse_Click"/>
+          </Grid></Border>
+        </StackPanel></ContentControl>
+        <InfoBar x:Name="MessageBar" IsOpen="False" IsClosable="True"/>
+      </StackPanel>
+    </ScrollViewer>
+    <Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="18,12" Margin="0,0,4,0">
+      <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel Spacing="4" VerticalAlignment="Center"><TextBlock x:Name="StatusText" Text="准备就绪 · MP4" TextWrapping="Wrap"/><TextBlock x:Name="ShortcutText" Text="Ctrl + Alt + F9 暂停 / 继续 · Ctrl + Alt + F10 停止" Style="{StaticResource MutedTextStyle}" FontSize="11" TextWrapping="Wrap"/></StackPanel>
+        <Button x:Name="OpenButton" Grid.Column="1" Content="打开录制" IsEnabled="False" Click="Open_Click" VerticalAlignment="Center"/>
+        <Button x:Name="PauseButton" Grid.Column="2" Content="暂停" IsEnabled="False" Click="Pause_Click" VerticalAlignment="Center"/>
+        <Button x:Name="StartButton" Grid.Column="3" Content="开始录制" Style="{StaticResource AccentButtonStyle}" Padding="22,9" IsEnabled="False" Click="Start_Click" VerticalAlignment="Center"/>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

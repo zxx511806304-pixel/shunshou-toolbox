@@ -42,6 +42,8 @@ jobs:
           ./scripts/Build-SttnModel.ps1 -Python '${{ steps.ai-python.outputs.python-path }}'
       - name: Build
         run: dotnet build Shunshou.slnx -c Release --no-restore
+      - name: Verify screen recording options without desktop or audio capture
+        run: dotnet run --project tests/Shunshou.ScreenRecording.Tests -c Release --no-build -- artifacts/recording-options
       - name: Verify video cancellation without a UI continuation
         run: dotnet run --project tests/Shunshou.VideoCancellation.Tests -c Release --no-build -- artifacts/video-cancellation
       - name: Verify subtitle download, conversion and transfer limits

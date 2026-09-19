@@ -1,0 +1,14 @@
+{
+  "Passed": true,
+  "Video": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\package-v102-recording\\generated-recording\\Recording_20260920_000006.mp4",
+  "Checks": [
+    "No capture on device discovery",
+    "Presets, custom FPS/bitrate/resolution and invalid input",
+    "Countdown cancellation",
+    "Light-Dark-Light rendered states",
+    "Native UI start/pause/resume/stop saves video",
+    "Floating controls",
+    "File-drop rejection"
+  ],
+  "NotCovered": "Real microphone capture, multi-monitor mixed DPI and all GPU models."
+}

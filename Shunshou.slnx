@@ -8,6 +8,8 @@
     <Project Path="src/Shunshou.Setup/Shunshou.Setup.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Shunshou.ScreenRecording.Tests/Shunshou.ScreenRecording.Tests.csproj" />
+    <Project Path="tests/Shunshou.NativeRecordingTests/Shunshou.NativeRecordingTests.csproj" />
     <Project Path="tests/Shunshou.SmokeTests/Shunshou.SmokeTests.csproj" />
     <Project Path="tests/Shunshou.Deployment.Tests/Shunshou.Deployment.Tests.csproj" />
     <Project Path="tests/Shunshou.DesktopIntegration.Tests/Shunshou.DesktopIntegration.Tests.csproj" />

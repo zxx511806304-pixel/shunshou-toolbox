@@ -27,7 +27,7 @@ public sealed partial class MainWindow : Window
         ["compression"] = ["按上传上限压缩", "无损 ZIP 打包", "ZIP 解压"],
         ["pdf"] = ["PDF 逐页转图片", "PDF 转高清长图", "PDF 转可编辑 Word", "PDF 转可编辑 PPT", "合并 PDF", "拆分 PDF", "网页转 PDF"],
         ["image"] = ["图片格式转换", "图片提取文字"],
-        ["media"] = ["音视频格式转换", "按目标大小压缩", "链接下载视频", "视频水印处理", "下载视频字幕"],
+        ["media"] = ["音视频格式转换", "按目标大小压缩", "链接下载视频", "视频水印处理", "下载视频字幕", "屏幕录制"],
         ["files"] = ["按名称搜索", "误删恢复", "批量重命名", "撤销重命名"],
         ["software"] = ["管理已安装软件"]
     };
@@ -59,7 +59,7 @@ public sealed partial class MainWindow : Window
         InitializeWorkspaces(hwnd);
         Navigation.SelectedItem = Navigation.MenuItems[0];
         SelectCategory("compression");
-        Closed += (_, _) => { _cancellation?.Cancel(); DisposeAppearance(); ShopArea.CloseQr(); DisposeSearch(); OcrEditor.Dispose(); Uninstaller.Dispose(); Recovery.Dispose(); VideoTools.Dispose(); SubtitleTools.Dispose(); WebPdfTools.Dispose(); };
+        Closed += (_, _) => { _cancellation?.Cancel(); DisposeAppearance(); ShopArea.CloseQr(); DisposeSearch(); OcrEditor.Dispose(); Uninstaller.Dispose(); Recovery.Dispose(); VideoTools.Dispose(); SubtitleTools.Dispose(); WebPdfTools.Dispose(); RecordingTools.Dispose(); };
     }
 
     private string Operation => _category == "shop" ? "" : OperationBox.SelectedItem as string ?? Operations[_category][0];
@@ -83,7 +83,7 @@ public sealed partial class MainWindow : Window
         {
             CategoryTitle.Text = "顺手小店";
             CategorySubtitle.Text = "手机卡、会员与生活优惠";
-            foreach (var element in new UIElement[] { OperationCard, GeneralArea, SearchWorkspace, OcrArea, Uninstaller, Recovery, VideoTools, SubtitleTools, WebPdfTools, RunFooter })
+            foreach (var element in new UIElement[] { OperationCard, GeneralArea, SearchWorkspace, OcrArea, Uninstaller, Recovery, VideoTools, SubtitleTools, WebPdfTools, RecordingTools, RunFooter })
                 SetVisible(element, false);
             UpdateConnectionStatus();
             StatusInfo.IsOpen = false;
@@ -128,6 +128,9 @@ public sealed partial class MainWindow : Window
         bool videoTool = op is "链接下载视频" or "视频水印处理";
         bool subtitles = op == "下载视频字幕";
         bool webPdf = op == "网页转 PDF";
+        bool recording = op == "屏幕录制";
+        SetVisible(RecordingTools, recording);
+        if (recording) _ = RecordingTools.EnsureLoadedAsync();
         SetVisible(SubtitleTools, subtitles);
         SetVisible(WebPdfTools, webPdf);
         UpdateConnectionStatus();
@@ -137,7 +140,7 @@ public sealed partial class MainWindow : Window
         SetVisible(Uninstaller, software);
         SetVisible(Recovery, recovery);
         SetVisible(OperationCard, !software);
-        SetVisible(RunFooter, !software && !recovery && !videoTool && !subtitles && !webPdf);
+        SetVisible(RunFooter, !software && !recovery && !videoTool && !subtitles && !webPdf && !recording);
         if (software) _ = LoadUninstallerAsync();
         bool target = op is "按上传上限压缩" or "按目标大小压缩";
         bool imageConvert = op == "图片格式转换";
@@ -151,7 +154,7 @@ public sealed partial class MainWindow : Window
         SetVisible(PdfPanel, pdfImages);
         SetVisible(PdfOfficeMode, op is "PDF 转可编辑 Word" or "PDF 转可编辑 PPT");
         SetVisible(SearchWorkspace, op == "按名称搜索");
-        SetVisible(GeneralArea, op != "按名称搜索" && !ocr && !software && !recovery && !videoTool && !subtitles && !webPdf);
+        SetVisible(GeneralArea, op != "按名称搜索" && !ocr && !software && !recovery && !videoTool && !subtitles && !webPdf && !recording);
         ResetSearchView();
         SetVisible(RenamePanel, op == "批量重命名");
         SetVisible(OutputPanel, op is not "按名称搜索" and not "批量重命名" and not "撤销重命名");
@@ -176,6 +179,7 @@ public sealed partial class MainWindow : Window
             "链接下载视频" => ("", "", "粘贴链接，选择画质，保存到电脑。"),
             "视频水印处理" => ("", "", "框选画面区域，预览效果后导出新视频。"),
             "下载视频字幕" => ("", "", "提取网站提供的字幕，保存为字幕文件或纯文字。"),
+            "屏幕录制" => ("", "", "选择屏幕或区域，录下演示、课程与操作过程。"),
             "网页转 PDF" => ("", "", "粘贴网址，预览网页，保存为 PDF。"),
             _ when _category == "pdf" => ("拖入一份 PDF 文档", "处理后保存为新文件，原 PDF 保留", "本地处理 PDF 页面，选择适合后续使用的输出方式。"),
             _ => ("拖入一个音频或视频文件", "转换为新文件，源文件保留", "转换常用音视频格式，或按提交要求调整大小。")
@@ -184,7 +188,7 @@ public sealed partial class MainWindow : Window
             Note("版式与编辑", "尽量保留文字样式、位置和页面图形。扫描页使用文字识别，复杂版式请对照原文检查。");
         else if (media)
             Note("转换与质量", "转为 MP3、MP4、M4A 通常会损失质量；FLAC 可保存解码后的无损音频。目标大小过小时，工具会提示无法达标。");
-        RunButton.Content = ocr ? "开始识别" : op == "按名称搜索" ? "开始搜索" : op == "批量重命名" ? "预览重命名" : "开始处理";
+        RunButton.Content = ocr ? "开始识别" : op == "按名称搜索" ? "搜索" : op == "批量重命名" ? "预览重命名" : "开始处理";
         StatusInfo.IsOpen = false;
         ResultPanel.Visibility = Visibility.Collapsed;
         SetVisible(OpenOutputButton, op != "按名称搜索" && !ocr);
@@ -387,7 +391,7 @@ public sealed partial class MainWindow : Window
         foreach (Control control in new Control[] { TargetSize, AllowLossy, AllowResize, FormatBox, ImageQuality, PdfDpi, SearchQuery, ImagesOnly, RenamePrefix, RenameStart, OutputDirectory, ImageWidth })
             control.IsEnabled = !busy;
         AllowResize.IsEnabled = !busy && AllowLossy.IsChecked == true;
-        SearchScopeBox.IsEnabled = ChooseSearchFolderButton.IsEnabled = SearchEngineBox.IsEnabled = EnableSearchIndexButton.IsEnabled = PdfOfficeMode.IsEnabled = !busy;
+        SearchScopeBox.IsEnabled = ChooseSearchFolderButton.IsEnabled = PdfOfficeMode.IsEnabled = !busy;
         CancelButton.IsEnabled = busy;
     }
 
@@ -415,6 +419,22 @@ public sealed partial class MainWindow : Window
     private async void Root_Loaded(object sender, RoutedEventArgs args)
     {
         var commandArgs = Environment.GetCommandLineArgs();
+        int searchOneButtonIndex = Array.IndexOf(commandArgs, "--verify-search-one-button");
+        if (searchOneButtonIndex >= 0)
+        {
+            if (searchOneButtonIndex + 1 >= commandArgs.Length) { Environment.Exit(2); return; }
+            int result = await VerifySearchOneButtonAsync(commandArgs[searchOneButtonIndex + 1]);
+            if (result != 0) Environment.Exit(result); else Close();
+            return;
+        }
+        int recordingVerifyIndex = Array.IndexOf(commandArgs, "--verify-recording-ui");
+        if (recordingVerifyIndex >= 0)
+        {
+            if (recordingVerifyIndex + 1 >= commandArgs.Length) { Environment.Exit(2); return; }
+            int result = await VerifyRecordingUiAsync(commandArgs[recordingVerifyIndex + 1]);
+            if (result != 0) Environment.Exit(result); else Close();
+            return;
+        }
         int fixVerifyIndex = Array.IndexOf(commandArgs, "--verify-v101");
         if (fixVerifyIndex >= 0)
         {

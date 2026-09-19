@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '1.0.1',
+    [string]$Version = '1.0.2',
     [Parameter(Mandatory)][string]$BasePackage,
     [Parameter(Mandatory)][string]$BaseSha256,
     [string]$OutputRoot = 'dist'
@@ -35,7 +35,7 @@ try {
         '-p:Platform=x64' '-p:WindowsAppSDKSelfContained=true' '-p:PublishSingleFile=false' '-p:PublishTrimmed=false' `
         '-p:DebugType=None' '-p:DebugSymbols=false' "-p:Version=$Version" -o $appStage --nologo -v:q
     if ($LASTEXITCODE -ne 0) { throw 'Application publish failed.' }
-    foreach ($resource in @('App.xbf','MainWindow.xbf','Shunshou.App.pri','tools/everything/Everything.exe','tools/everything/es.exe')) {
+    foreach ($resource in @('App.xbf','MainWindow.xbf','ScreenRecordingWorkspace.xbf','ScreenRecordingBar.xbf','ScreenRecorderLib.dll','Shunshou.App.pri','tools/everything/Everything.exe','tools/everything/es.exe')) {
         if (-not (Test-Path -LiteralPath (Join-Path $appStage $resource))) { throw "Missing file: $resource" }
     }
     $launcher = Assert-ChildPath -Root $package -Path (Join-Path $package 'ShunshouToolbox.exe')
@@ -45,7 +45,9 @@ try {
     Get-ChildItem -LiteralPath (Join-Path $repoRoot 'docs') | Copy-Item -Destination $docsStage -Recurse -Force
     foreach ($file in @('CHANGELOG.md','THIRD-PARTY-NOTICES.md')) { Copy-Item -LiteralPath (Join-Path $repoRoot $file) -Destination $docsStage -Force }
     Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination (Join-Path $docsStage 'Usage.md') -Force
+    & (Join-Path $PSScriptRoot 'Collect-Licenses.ps1') -Destination (Join-Path $docsStage 'licenses')
     & (Join-Path $PSScriptRoot 'Build-ComponentCatalog.ps1') -DocsDirectory $docsStage -RuntimeDirectory (Join-Path $appStage 'tools')
+    & (Join-Path $PSScriptRoot 'Inspect-NativeDependencies.ps1') -Directory $package -ReportPath (Join-Path $docsStage 'native-dependencies.json')
     foreach ($file in Get-ChildItem -LiteralPath $appStage -Recurse -File | Where-Object { $_.Extension -eq '.pdb' -or $_.Name.EndsWith('.runtimeconfig.dev.json') }) {
         Remove-Item -LiteralPath (Assert-ChildPath -Root $package -Path $file.FullName)
     }

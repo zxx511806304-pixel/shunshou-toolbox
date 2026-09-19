@@ -1,0 +1,9 @@
+<Window x:Class="Shunshou.App.ScreenRecordingBar" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Border x:Name="Root" Background="{ThemeResource SurfaceBrush}" BorderBrush="{ThemeResource SurfaceStrokeBrush}" BorderThickness="1" Padding="12,8" CornerRadius="7">
+    <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <StackPanel x:Name="DragArea" VerticalAlignment="Center" PointerPressed="Drag_Pressed"><TextBlock Text="屏幕录制" FontSize="11" Foreground="{ThemeResource MutedBrush}"/><TextBlock x:Name="TimeText" Text="00:00:00" FontSize="18" FontWeight="SemiBold" Foreground="{ThemeResource TextBrush}"/></StackPanel>
+      <Button x:Name="PauseButton" Grid.Column="1" Content="暂停" Click="Pause_Click" VerticalAlignment="Center" ToolTipService.ToolTip="Ctrl + Alt + F9"/>
+      <Button x:Name="StopButton" Grid.Column="2" Content="停止" Click="Stop_Click" VerticalAlignment="Center" Style="{StaticResource AccentButtonStyle}" ToolTipService.ToolTip="Ctrl + Alt + F10"/>
+    </Grid>
+  </Border>
+</Window>

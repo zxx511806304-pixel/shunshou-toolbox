@@ -10,8 +10,16 @@ public enum EverythingIndexState { Missing, NeedsEnable, Loading, Ready, Unavail
 public sealed record EverythingIndexStatus(EverythingIndexState State, string Message, bool UsesExistingIndex = false);
 public sealed record EverythingCommandResult(int ExitCode, string Output, string Error = "");
 
+public interface IIndexedFileSearchService
+{
+    Task<EverythingIndexStatus> GetStatusAsync(CancellationToken ct = default);
+    Task<EverythingIndexStatus> EnableAsync(IProgress<ToolProgress>? progress, CancellationToken ct);
+    Task<FileSearchSummary> SearchAsync(IEnumerable<string> roots, string query, bool imagesOnly,
+        IProgress<FileSearchUpdate>? progress, CancellationToken ct, int maxResults = 10000, int batchSize = 100);
+}
+
 /// <summary>The official ES client reads an Everything index over local IPC. It never scans directories.</summary>
-public sealed class EverythingSearchService
+public sealed class EverythingSearchService : IIndexedFileSearchService
 {
     private readonly string _runtimeDirectory;
     private readonly string _dataDirectory;
@@ -34,6 +42,13 @@ public sealed class EverythingSearchService
     {
         if (!File.Exists(Path.Combine(_runtimeDirectory, "es.exe")))
             return new(EverythingIndexState.Missing, "搜索组件缺失，请重新解压完整软件包。");
+        // A successful loaded-database reply already proves the connected IPC instance is alive.
+        // Avoid an extra client process for its version before every user query.
+        if (_instance != null)
+        {
+            var connected = await _query(["-instance", _instance, "-timeout", "100", "-get-result-count"], ct).ConfigureAwait(false);
+            if (connected.ExitCode == 0) return new(EverythingIndexState.Ready, "已就绪", _instance != _ownInstance);
+        }
         // Never change another application's settings or start an elevated process during a status check.
         foreach (var instance in new[] { _instance, "", "1.5a", "1.5", _ownInstance }.OfType<string>().Distinct())
         {
@@ -42,12 +57,12 @@ public sealed class EverythingSearchService
             _instance = instance;
             var loaded = await _query(["-instance", instance, "-timeout", "100", "-get-result-count"], ct).ConfigureAwait(false);
             if (loaded.ExitCode != 0)
-                return new(EverythingIndexState.Loading, "正在建立本机索引，首次需要一些时间…", instance != _ownInstance);
-            return new(EverythingIndexState.Ready, instance == _ownInstance ? "本机索引已连接" : "已连接 Everything 索引", instance != _ownInstance);
+                return new(EverythingIndexState.Loading, "正在建立文件索引，无需重复操作…", instance != _ownInstance);
+            return new(EverythingIndexState.Ready, "已就绪", instance != _ownInstance);
         }
         _instance = null;
         return File.Exists(Path.Combine(_runtimeDirectory, "Everything.exe"))
-            ? new(EverythingIndexState.NeedsEnable, "启用快速搜索后，按名称查询本机索引。")
+            ? new(EverythingIndexState.NeedsEnable, "首次使用需建立文件索引，可能出现 Windows 授权提示；准备时间稍长，完成后搜索会快很多。")
             : new(EverythingIndexState.Missing, "搜索组件缺失，请重新解压完整软件包。");
     }
 
@@ -60,7 +75,7 @@ public sealed class EverythingSearchService
         {
             progress?.Report(new(0, status.Message));
             var existing = await _query(["-instance", _instance!, "-timeout", "60000", "-get-result-count"], ct).ConfigureAwait(false);
-            return existing.ExitCode == 0 ? new(EverythingIndexState.Ready, "本机索引已就绪", status.UsesExistingIndex) : status;
+            return existing.ExitCode == 0 ? new(EverythingIndexState.Ready, "已就绪", status.UsesExistingIndex) : status;
         }
         ct.ThrowIfCancellationRequested();
         Directory.CreateDirectory(_dataDirectory);
@@ -80,14 +95,14 @@ public sealed class EverythingSearchService
             using var process = Process.Start(start) ?? throw new IOException("无法启动本机索引。");
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
-        { return new(EverythingIndexState.NeedsEnable, "未授权启用快速搜索，可继续使用普通搜索。"); }
+        { return new(EverythingIndexState.NeedsEnable, "未获得 Windows 授权，搜索未开始。再次点击搜索可重试。"); }
         _instance = _ownInstance;
-        progress?.Report(new(0, "正在建立本机索引，首次需要一些时间…"));
+        progress?.Report(new(0, "正在建立文件索引，完成后自动显示结果，无需重复操作…"));
         // The query timeout waits for the database to load; an empty unloaded database is never reported as a completed search.
         var ready = await _query(["-instance", _ownInstance, "-timeout", "60000", "-get-result-count"], ct).ConfigureAwait(false);
         return ready.ExitCode == 0
-            ? new(EverythingIndexState.Ready, "本机索引已就绪")
-            : new(EverythingIndexState.Loading, "索引仍在建立，请稍后再次搜索。");
+            ? new(EverythingIndexState.Ready, "已就绪")
+            : new(EverythingIndexState.Loading, "正在建立文件索引，完成后自动显示结果，无需重复操作…");
     }
 
     public async Task<FileSearchSummary> SearchAsync(IEnumerable<string> roots, string query, bool imagesOnly,
@@ -128,7 +143,7 @@ public sealed class EverythingSearchService
             {
                 _instance = null;
                 throw new IOException(response.ExitCode == 8
-                    ? "索引暂未就绪，请稍后重试或重新启用快速搜索。"
+                    ? "索引暂未就绪，请再次点击搜索重试。"
                     : $"索引查询失败（{response.ExitCode}），请重试。");
             }
             int nameColumn = -1, attributeColumn = -1, sizeColumn = -1, columnCount = 0;

@@ -1,0 +1,13 @@
+{
+  "Passed": true,
+  "Checks": [
+    "Page status is read-only; one search action prepares an absent index, waits and shows results.",
+    "Ready searches have no enable step; Light and Dark layouts captured.",
+    "Declined consent reports the reason, restores the action and never falls back to traversal.",
+    "Cancelling preparation leaves no query in flight and permits a later retry.",
+    "Missing components and empty input remain explicit errors without indexing side effects.",
+    "Actual existing Everything IPC queried through the same UI action with a generated Chinese filename."
+  ],
+  "ActualExistingIndexQueryMs": 411.4259,
+  "NotCovered": "Real first-time UAC, clean-machine index creation and unrelated tools."
+}

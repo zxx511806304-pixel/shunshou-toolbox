@@ -23,7 +23,6 @@ public sealed partial class MainWindow
             await File.WriteAllTextAsync(Path.Combine(source, "Shunshou101-文字.txt"), "Generated search fixture only.");
             Directory.CreateDirectory(Path.Combine(source, "Shunshou101-文件夹"));
             Navigation.SelectedItem = Navigation.MenuItems[4];
-            SearchEngineBox.SelectedIndex = 0;
             await RefreshSearchIndexAsync();
             RequireUi(_searchIndexConnected, "An existing real Everything index is required for this integration test; none was connected.");
             // Let the existing service receive our new file events before measuring warmed queries.
@@ -63,10 +62,7 @@ public sealed partial class MainWindow
             ImagesOnly.IsChecked = true;
             await RunSearchAsync();
             RequireUi(_searchRows.Count == 1 && string.Equals(_searchRows[0].FullPath, image, StringComparison.OrdinalIgnoreCase), "Index image-only filter failed.");
-            SearchEngineBox.SelectedIndex = 1;
-            await RunSearchAsync();
-            RequireUi(_searchRows.Count == 1 && !_busy, "Explicit ordinary-search mode failed.");
-            checks.Add("Image filter and explicitly selected ordinary-search fallback.");
+            checks.Add("Image filter through the default indexed-search action.");
 
             Navigation.SelectedItem = Navigation.MenuItems[1];
             OperationBox.SelectedIndex = 2;

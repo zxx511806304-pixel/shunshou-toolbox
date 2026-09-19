@@ -24,6 +24,8 @@ public sealed partial class MainWindow
         OcrEditor.HostWindowHandle = Uninstaller.HostWindowHandle = Recovery.HostWindowHandle = hwnd;
         VideoTools.HostWindowHandle = hwnd;
         VideoTools.BusyChanged += (_, busy) => SetBusy(busy);
+        RecordingTools.HostWindowHandle = hwnd;
+        RecordingTools.BusyChanged += (_, busy) => SetBusy(busy);
         SubtitleTools.HostWindowHandle = WebPdfTools.HostWindowHandle = hwnd;
         SubtitleTools.BusyChanged += (_, busy) => SetBusy(busy);
         WebPdfTools.BusyChanged += (_, busy) => SetBusy(busy);
@@ -66,6 +68,23 @@ public sealed partial class MainWindow
         AppWindow.Closing += async (_, args) =>
         {
             if (_allowClose) return;
+            if (RecordingTools.IsBusy)
+            {
+                args.Cancel = true;
+                if (_closePromptOpen) return;
+                _closePromptOpen = true;
+                try
+                {
+                    var dialog = new ContentDialog { XamlRoot = RootLayout.XamlRoot, Title = "停止录制并退出？", Content = "当前录制会先保存到电脑。", PrimaryButtonText = "停止并退出", CloseButtonText = "继续录制", DefaultButton = ContentDialogButton.Close };
+                    if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+                    {
+                        await RecordingTools.StopAndSaveAsync();
+                        if (!OcrEditor.HasUnsavedEdits || await OcrEditor.ConfirmDiscardEditsAsync()) { _allowClose = true; Close(); }
+                    }
+                }
+                finally { _closePromptOpen = false; }
+                return;
+            }
             if (_busy) { args.Cancel = true; ShowStatus("正在处理", "请等待处理完成，或先取消当前任务。", InfoBarSeverity.Informational); return; }
             if (!OcrEditor.HasUnsavedEdits) return;
             args.Cancel = true;
@@ -113,7 +132,7 @@ public sealed partial class MainWindow
 
     private void RestoreInputDraft()
     {
-        if (_category == "software" || Operation is "误删恢复" or "链接下载视频" or "视频水印处理" or "网页转 PDF" or "下载视频字幕") return;
+        if (_category == "software" || Operation is "误删恢复" or "链接下载视频" or "视频水印处理" or "网页转 PDF" or "下载视频字幕" or "屏幕录制") return;
         var draft = _inputWorkspace.SwitchTo(CurrentInputTool, _inputs, _activeInputPath);
         _inputDraftMessage = draft.Message;
         _inputs.Clear();

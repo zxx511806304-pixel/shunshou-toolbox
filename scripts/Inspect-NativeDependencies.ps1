@@ -34,11 +34,25 @@ namespace ShunshouBuild {
 $files = @(Get-ChildItem -LiteralPath $Directory -Recurse -File | Where-Object { $_.Extension -in @('.dll','.exe','.pyd') })
 $records = [Collections.Generic.List[object]]::new()
 $failures = [Collections.Generic.List[string]]::new()
+$architectureCompanions = [Collections.Generic.List[object]]::new()
 foreach ($file in $files) {
     $pe = [ShunshouBuild.PeImports]::Read($file.FullName)
     if (-not $pe) { continue }
     $relative = [IO.Path]::GetRelativePath($Directory, $file.FullName).Replace('\','/')
-    if (-not $pe.Managed -and $pe.Machine -ne 0x8664) { $failures.Add("Non-x64 native binary: $relative") }
+    if (-not $pe.Managed -and $pe.Machine -ne 0x8664) {
+        # Microsoft's win-x64 SDK payload includes this signed ARM64 companion.
+        # It contains executable code, so this is deliberately NOT a resource-only
+        # exemption. A new SDK asset or any changed bytes require a fresh review.
+        $sdkCompanionHash = '5b7c1a93b8536792bb57eef8ad3593cf896ac1a1976657ac5cd63544e4e2d3cb'
+        if ($relative -ceq 'app/Microsoft.Windows.Workloads.Resources_ec.dll' -and
+            $pe.Machine -eq 0xAA64 -and
+            (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash -eq $sdkCompanionHash) {
+            $architectureCompanions.Add([ordered]@{
+                File=$relative; Machine='0xAA64'; Sha256=$sdkCompanionHash
+                Source='Microsoft.WindowsAppSDK.AI 1.8.53 / runtimes-framework/win-x64/native; Microsoft-signed SDK architecture companion'
+            })
+        } else { $failures.Add("Non-x64 native binary: $relative") }
+    }
     foreach ($dependency in $pe.Imports) {
         $name = $dependency.Name
         $local = Test-Path -LiteralPath (Join-Path $file.DirectoryName $name)
@@ -56,7 +70,7 @@ foreach ($file in $files) {
     }
 }
 $report = [ordered]@{
-    Architecture='win-x64'; ExaminedFiles=$files.Count; RequiredMissing=$failures.ToArray(); Imports=$records.ToArray()
+    Architecture='win-x64'; ExaminedFiles=$files.Count; RequiredMissing=$failures.ToArray(); ArchitectureCompanions=$architectureCompanions.ToArray(); Imports=$records.ToArray()
     Limitation='Static import-table audit. Windows API contracts and system DLL availability still require testing on a clean supported Windows installation; dynamically loaded dependencies are not exhaustively covered.'
 }
 if ($ReportPath) { $report | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $ReportPath -Encoding utf8 }

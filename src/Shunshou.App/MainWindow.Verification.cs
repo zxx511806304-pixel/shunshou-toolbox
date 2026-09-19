@@ -73,13 +73,15 @@ public sealed partial class MainWindow
 
             Navigation.SelectedItem = Navigation.MenuItems[4];
             SelectCategory("files");
-            SearchEngineBox.SelectedIndex = 1; // This older fixture specifically verifies directory traversal.
+            await RefreshSearchIndexAsync();
+            RequireUi(_searchIndexConnected, "This UI fixture requires an existing Everything index; core traversal has separate tests.");
             RequireUi(SearchScopeBox.SelectedItem is SearchScope { Root: null, IsFolder: false }, "Default search scope is not all local drives");
             RequireUi(AcceptInputPaths([landscape]) && SearchQuery.Text == Path.GetFileName(landscape)
                 && _selectedSearchFolder == source, "File input did not choose its containing search folder and name");
             RequireUi(AcceptInputPaths([source]), "Folder input was rejected for search");
             SearchQuery.Text = "资料";
             ImagesOnly.IsChecked = false;
+            await WaitForIndexedFixtureAsync(source, "资料", 5);
             await RunSearchAsync();
             RequireUi(_searchRows.Count == 5 && !_busy && !TaskProgress.IsIndeterminate, "Search results or final UI state are incorrect");
             SearchResults.UpdateLayout();
@@ -115,6 +117,7 @@ public sealed partial class MainWindow
             Directory.CreateDirectory(scrollFixtures);
             for (var i = 0; i < 160; i++) File.Copy(landscape, Path.Combine(scrollFixtures, $"滚动-{i:D3}.png"), true);
             SelectSearchFolder(scrollFixtures, "滚动");
+            await WaitForIndexedFixtureAsync(scrollFixtures, "滚动", 160);
             await RunSearchAsync();
             RequireUi(_searchRows.Count == 160, "Scroll fixture count is incorrect");
             foreach (int index in new[] { 0, 40, 80, 120, 159 })
