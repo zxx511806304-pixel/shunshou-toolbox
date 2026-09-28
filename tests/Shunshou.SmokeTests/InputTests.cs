@@ -47,11 +47,12 @@ public static class InputTests
         {
             string valid = tool switch
             {
-                InputTool.TargetZip or InputTool.ExtractZip => files["图片.zip"],
+                InputTool.TargetZip or InputTool.ExtractZip or InputTool.Archive => files["图片.zip"],
                 InputTool.Pdf or InputTool.MergePdf => files["材料.pdf"],
-                InputTool.ImageConvert or InputTool.Ocr => files["截图.PNG"],
-                InputTool.Media => files["声音.WAV"],
+                InputTool.ImageConvert or InputTool.CropImage or InputTool.Ocr => files["截图.PNG"],
+                InputTool.Media or InputTool.TrimMedia or InputTool.ExtractAudio => files["声音.WAV"],
                 InputTool.UndoRename => files["记录.json"],
+                // CreateZip、Search、Rename 接受任意可访问文件。
                 _ => files["说明.txt"]
             };
             Require(InputSelectionPolicy.Select(tool, [], [valid]).Applied, $"{tool} accepts its valid input.");
