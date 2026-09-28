@@ -24,7 +24,7 @@ $final = Assert-ChildPath -Root $OutputRoot -Path (Join-Path $OutputRoot $name)
 $zip = $final + '.zip'
 if ((Test-Path -LiteralPath $final) -or (Test-Path -LiteralPath $zip)) { throw "Output already exists. Choose a new -Version or -OutputRoot; no previous package will be deleted: $final" }
 foreach ($required in @('runtime/video-download/python.exe','runtime/video-download/node.exe','runtime/video-download/yt-dlp','runtime/ffmpeg/bin/ffmpeg.exe','runtime/ffmpeg/bin/ffprobe.exe','runtime/ffmpeg/build-source.json','runtime/vcredist/bin/msvcp140.dll','runtime/vcredist/bin/vcruntime140_1.dll','runtime/ocr/v6/PP-OCRv6_det_small.onnx','runtime/ocr/v6/PP-OCRv6_rec_small.onnx','runtime/recovery/bin/photorec_win.exe','runtime/recovery/bin/63/cygwin','runtime/recovery/build-source.json','runtime/recovery/dependency-sources.json','runtime/sevenzip/7z.exe','runtime/sevenzip/7z.dll','runtime/sevenzip/build-source.json')) {
-    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $required))) { throw "Missing offline runtime: $required. Run Download-Runtime.ps1, Download-OcrModels.ps1 and Download-Recovery.ps1 first." }
+    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $required))) { throw "Missing offline runtime: $required. Run Download-Runtime.ps1, Download-OcrModels.ps1, Download-Everything.ps1, Download-Recovery.ps1, Download-7Zip.ps1 and Get-VideoDownloadRuntime.ps1 first." }
 }
 if (Test-Path -LiteralPath (Join-Path $repoRoot 'runtime/recovery/bin/testdisk_win.exe')) { throw 'The TestDisk executable must not be redistributed. Run Download-Recovery.ps1 to refresh the PhotoRec runtime.' }
 foreach ($requiredAi in @('model.onnx','sttn.onnx','component-source.json','runtime-lock.json')) {
