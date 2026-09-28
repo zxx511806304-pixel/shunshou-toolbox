@@ -66,9 +66,9 @@ jobs:
       - name: Build portable package
         shell: pwsh
         run: |
-          ./scripts/Build-Portable.ps1
-          $portableVersion = ([xml](Get-Content -LiteralPath ./Directory.Build.props -Raw)).Project.PropertyGroup.Version
-          $portableRoot = Join-Path $PWD "dist/ShunshouToolbox-$portableVersion-win-x64"
+          $packageVersion = ([xml](Get-Content -LiteralPath ./Directory.Build.props -Raw)).Project.PropertyGroup.Version
+          ./scripts/Build-Portable.ps1 -Version $packageVersion
+          $portableRoot = Join-Path $PWD "dist/ShunshouToolbox-$packageVersion-win-x64"
           foreach ($entry in @('ShunshouToolbox.exe', 'app/Shunshou.App.exe', 'app/Shunshou.App.pri', 'docs/Usage.md')) {
             if (-not (Test-Path -LiteralPath (Join-Path $portableRoot $entry) -PathType Leaf)) { throw "Portable entry is missing: $entry" }
           }
@@ -79,7 +79,9 @@ jobs:
         run: ./scripts/Test-Launcher.ps1 -OutputRoot artifacts/launcher
       - name: Build offline self-extracting package
         shell: pwsh
-        run: ./scripts/Build-Setup.ps1
+        run: |
+          $packageVersion = ([xml](Get-Content -LiteralPath ./Directory.Build.props -Raw)).Project.PropertyGroup.Version
+          ./scripts/Build-Setup.ps1 -Version $packageVersion
       - name: Verify final self-extracting EXE in an isolated directory
         shell: pwsh
         run: |
