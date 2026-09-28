@@ -152,7 +152,7 @@
       "Name": "torchvision",
       "Version": "0.24.1+cpu",
       "Url": "https://download-r2.pytorch.org/whl/cpu/torchvision-0.24.1%2Bcpu-cp312-cp312-win_amd64.whl",
-      "Sha256": "af904a34b563c302fa4583a4746f3108bafdc5823a8fe9b01c51",
+      "Sha256": "af904a34b563c302fa4583a4746f3108bafdc5823a67c912d6023a8fe9b01c51",
       "HashSource": "Official PyTorch CPU package index wheel link SHA256"
     },
     {
