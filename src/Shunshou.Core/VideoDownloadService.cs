@@ -106,6 +106,10 @@ public sealed class VideoDownloadService(string? engineDirectory = null, string?
     public static string ValidateUrl(string url)
     {
         url = (url ?? "").Trim();
+        // 换行、制表符等控制字符可能向下载器注入额外参数，必须直接拒绝；
+        // 不能像普通空格那样走“从分享文案中提取链接”的容错分支把后续内容截掉。
+        if (url.Any(char.IsControl))
+            throw new ArgumentException("请粘贴完整的 http 或 https 视频链接。");
         // Mobile sharing often includes explanatory text around one URL.
         if (!Uri.TryCreate(url, UriKind.Absolute, out _) || url.Any(char.IsWhiteSpace))
         {
