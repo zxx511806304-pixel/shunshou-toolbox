@@ -1,12 +1,12 @@
 {
   "ffmpeg": {
-    "Tag": "autobuild-2026-09-08-23-15",
-    "Name": "ffmpeg-n9.0.1-27-g9b0578816c-win64-lgpl-shared-9.0.zip",
-    "Url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-08-23-15/ffmpeg-n9.0.1-27-g9b0578816c-win64-lgpl-shared-9.0.zip",
-    "Sha256": "b7b2f46257aca600ac52eec2c5c0b3440ecffbc7c6bd841074502f6ee78718bf",
-    "SourceCommit": "9b0578816c6f94514d330d4f2ae7e44a9fb42692",
-    "Release": "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-09-08-23-15",
-    "BuildScripts": "https://github.com/BtbN/FFmpeg-Builds/tree/autobuild-2026-09-08-23-15"
+    "Tag": "autobuild-2026-09-27-13-04",
+    "Name": "ffmpeg-n9.0.2-12-gc867e13549-win64-lgpl-shared-9.0.zip",
+    "Url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-27-13-04/ffmpeg-n9.0.2-12-gc867e13549-win64-lgpl-shared-9.0.zip",
+    "Sha256": "8ee8dcffde407fe78381b8d5888a0d19dca5e20fb26cdadba78c1bbc03043e30",
+    "SourceCommit": "c867e13549",
+    "Release": "https://github.com/BtbN/FFmpeg-Builds/releases/tag/autobuild-2026-09-27-13-04",
+    "BuildScripts": "https://github.com/BtbN/FFmpeg-Builds/tree/autobuild-2026-09-27-13-04"
   },
   "visualCpp": {
     "Version": "14.44.35211.0",
