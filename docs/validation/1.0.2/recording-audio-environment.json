@@ -1,0 +1,120 @@
+{
+  "Passed": false,
+  "CaptureExecuted": true,
+  "MicrophoneCaptured": false,
+  "CapturedContent": "Generated animation window, plus a production display crop fully inside that window.",
+  "Results": [
+    {
+      "Name": "validated-options",
+      "Plan": {
+        "Display": {
+          "DeviceName": "\\\\.\\DISPLAY1",
+          "DisplayName": "DELL P2419H",
+          "Bounds": {
+            "X": 0,
+            "Y": 0,
+            "Width": 1920,
+            "Height": 1080
+          },
+          "IsPrimary": true
+        },
+        "Region": {
+          "X": 0,
+          "Y": 0,
+          "Width": 640,
+          "Height": 360
+        },
+        "OutputWidth": 640,
+        "OutputHeight": 360,
+        "FrameRate": 30,
+        "VideoBitrate": 4000000,
+        "AudioBitrateKbps": 192
+      },
+      "OddPlan": {
+        "Display": {
+          "DeviceName": "\\\\.\\DISPLAY1",
+          "DisplayName": "DELL P2419H",
+          "Bounds": {
+            "X": 0,
+            "Y": 0,
+            "Width": 1920,
+            "Height": 1080
+          },
+          "IsPrimary": true
+        },
+        "Region": {
+          "X": 0,
+          "Y": 0,
+          "Width": 641,
+          "Height": 361
+        },
+        "OutputWidth": 640,
+        "OutputHeight": 360,
+        "FrameRate": 30,
+        "VideoBitrate": 2000000,
+        "AudioBitrateKbps": 192
+      },
+      "InvalidCases": 11,
+      "AcceptedFps": [
+        1,
+        15,
+        30,
+        60,
+        120
+      ]
+    },
+    {
+      "Name": "pre-cancelled-start",
+      "Passed": true
+    },
+    {
+      "Name": "startup-cancellation",
+      "CancelledDuringStart": true,
+      "State": "Failed"
+    },
+    {
+      "Name": "production-custom-60fps",
+      "Video": {
+        "Width": 640,
+        "Height": 360,
+        "FrameRate": 60,
+        "Duration": 1.449983,
+        "Bitrate": 168382,
+        "AudioStreams": 0,
+        "Codec": "h264",
+        "Bytes": 30519,
+        "DistinctDecodedFrames": 7
+      },
+      "ActivePlan": {
+        "Display": {
+          "DeviceName": "\\\\.\\DISPLAY1",
+          "DisplayName": "DELL P2419H",
+          "Bounds": {
+            "X": 0,
+            "Y": 0,
+            "Width": 1920,
+            "Height": 1080
+          },
+          "IsPrimary": true
+        },
+        "Region": {
+          "X": 40,
+          "Y": 156,
+          "Width": 640,
+          "Height": 360
+        },
+        "OutputWidth": 640,
+        "OutputHeight": 360,
+        "FrameRate": 60,
+        "VideoBitrate": 6000000,
+        "AudioBitrateKbps": 192
+      },
+      "Output": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\recording-v1.0.2\\20260919-233315-2b5287\\recordings\\Recording_20260919_233320.mp4"
+    }
+  ],
+  "Uncovered": [
+    "Real microphone capture is deliberately not exercised.",
+    "Multi-monitor/DPI combinations, first-time permissions, protected content, long recordings, and all GPU/driver combinations are not covered."
+  ],
+  "Error": "System.InvalidOperationException: FAIL: decoded loopback PCM contains the generated 1 kHz tone\r\n   at Shunshou.ScreenRecording.Tests.Program.Check(Boolean condition, String name) in C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\tests\\Shunshou.ScreenRecording.Tests\\Program.cs:line 232\r\n   at Shunshou.ScreenRecording.Tests.SystemAudioCheck.RunAsync(ScreenRecordingService recorder, ScreenRecordingOptions options, IntPtr window, String ffmpeg, String root, List\u00601 results, List\u00601 uncovered) in C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\tests\\Shunshou.ScreenRecording.Tests\\SystemAudioCheck.cs:line 47\r\n   at Shunshou.ScreenRecording.Tests.Program.RunExtrasAsync(ScreenRecordingService recorder, ScreenRecordingOptions options, ScreenRecordingOptions windowOptions, FixtureWindow fixture, String ffmpeg, String root, Boolean audio) in C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\tests\\Shunshou.ScreenRecording.Tests\\Program.cs:line 208\r\n   at Shunshou.ScreenRecording.Tests.Program.RunAsync(String root, String ffmpeg, FixtureWindow fixture, Boolean audio, Boolean supplement) in C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\tests\\Shunshou.ScreenRecording.Tests\\Program.cs:line 103\r\n   at Shunshou.ScreenRecording.Tests.Program.RunAsync(String root, String ffmpeg, FixtureWindow fixture, Boolean audio, Boolean supplement) in C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\tests\\Shunshou.ScreenRecording.Tests\\Program.cs:line 164\r\n   at Shunshou.ScreenRecording.Tests.Program.\u003C\u003Ec__DisplayClass2_0.\u003C\u003CMain\u003Eb__1\u003Ed.MoveNext() in C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\tests\\Shunshou.ScreenRecording.Tests\\Program.cs:line 35"
+}

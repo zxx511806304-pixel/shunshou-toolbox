@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '0.2.2',
+    [string]$Version = '1.0.2',
     [string]$OutputRoot = '',
     [string]$Dotnet = '',
     [switch]$SkipZip
@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Runtime.Common.ps1')
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-if ($Version -notmatch '^\d+\.\d+\.\d+(-[A-Za-z0-9.-]+)?$') { throw 'Use a semantic version, for example 0.1.0 or 0.1.0-preview.2.' }
+if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Use a three-part numeric version, for example 0.3.0.' }
 if ([string]::IsNullOrWhiteSpace($OutputRoot)) { $OutputRoot = Join-Path $repoRoot 'dist' }
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
 if ([string]::IsNullOrWhiteSpace($Dotnet)) {
@@ -17,40 +17,55 @@ if ([string]::IsNullOrWhiteSpace($Dotnet)) {
 if (-not $env:DOTNET_CLI_HOME) { $env:DOTNET_CLI_HOME = Join-Path $repoRoot '.tools/dotnet-home' }
 if (-not $env:NUGET_PACKAGES -and (Test-Path -LiteralPath (Join-Path $repoRoot '.tools/nuget'))) { $env:NUGET_PACKAGES = Join-Path $repoRoot '.tools/nuget' }
 $name = "ShunshouToolbox-$Version-win-x64"
+foreach ($requiredSearch in @('Everything.exe','es.exe','component-source.json','Everything-LICENSE.txt','ES-LICENSE.txt')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot ('runtime/everything/' + $requiredSearch)))) { throw 'Missing indexed search runtime. Run Download-Everything.ps1 first.' }
+}
 $final = Assert-ChildPath -Root $OutputRoot -Path (Join-Path $OutputRoot $name)
 $zip = $final + '.zip'
 if ((Test-Path -LiteralPath $final) -or (Test-Path -LiteralPath $zip)) { throw "Output already exists. Choose a new -Version or -OutputRoot; no previous package will be deleted: $final" }
-foreach ($required in @('runtime/ffmpeg/bin/ffmpeg.exe','runtime/ffmpeg/bin/ffprobe.exe','runtime/ffmpeg/build-source.json','runtime/vcredist/bin/msvcp140.dll','runtime/vcredist/bin/vcruntime140_1.dll','runtime/ocr/v6/PP-OCRv6_det_small.onnx','runtime/ocr/v6/PP-OCRv6_rec_small.onnx')) {
-    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $required))) { throw "Missing offline runtime: $required. Run Download-Runtime.ps1 and Download-OcrModels.ps1 first." }
+foreach ($required in @('runtime/video-download/python.exe','runtime/video-download/node.exe','runtime/video-download/yt-dlp','runtime/ffmpeg/bin/ffmpeg.exe','runtime/ffmpeg/bin/ffprobe.exe','runtime/ffmpeg/build-source.json','runtime/vcredist/bin/msvcp140.dll','runtime/vcredist/bin/vcruntime140_1.dll','runtime/ocr/v6/PP-OCRv6_det_small.onnx','runtime/ocr/v6/PP-OCRv6_rec_small.onnx','runtime/recovery/bin/photorec_win.exe','runtime/recovery/bin/63/cygwin','runtime/recovery/build-source.json','runtime/recovery/dependency-sources.json','runtime/sevenzip/7z.exe','runtime/sevenzip/7z.dll','runtime/sevenzip/build-source.json')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $required))) { throw "Missing offline runtime: $required. Run Download-Runtime.ps1, Download-OcrModels.ps1 and Download-Recovery.ps1 first." }
 }
+if (Test-Path -LiteralPath (Join-Path $repoRoot 'runtime/recovery/bin/testdisk_win.exe')) { throw 'The TestDisk executable must not be redistributed. Run Download-Recovery.ps1 to refresh the PhotoRec runtime.' }
+foreach ($requiredAi in @('model.onnx','sttn.onnx','component-source.json','runtime-lock.json')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot ('runtime/ai-inpaint/' + $requiredAi)))) { throw "Missing AI component: $requiredAi. Prepare both verified models before packaging the three engine choices." }
+}
+& (Join-Path $PSScriptRoot 'Get-AiInpaintRuntime.ps1') -RequireSttn
+$oldRecoverySources = Join-Path $repoRoot 'runtime/recovery/sources'
+if ((Test-Path -LiteralPath $oldRecoverySources) -and @(Get-ChildItem -LiteralPath $oldRecoverySources -Recurse -File).Count -gt 0) { throw 'Recovery source archives belong in the separate source companion, not in the application runtime. Run Download-Recovery.ps1.' }
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 $stage = Join-Path $OutputRoot ('.build-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stage | Out-Null
+$appStage = Join-Path $stage 'app'
+$docsStage = Join-Path $stage 'docs'
+New-Item -ItemType Directory -Path $appStage, $docsStage | Out-Null
 try {
+    # Generate the actual source companion at the same distribution location and
+    # refresh its exact filename/hash document before copying docs into the app.
+    & (Join-Path $PSScriptRoot 'Build-RecoverySources.ps1') -Version $Version -OutputRoot $OutputRoot | Out-Null
+    & (Join-Path $PSScriptRoot 'Build-AiRunner.ps1') -Dotnet $Dotnet
     & $Dotnet publish (Join-Path $repoRoot 'src/Shunshou.App/Shunshou.App.csproj') -c Release -r win-x64 --self-contained true `
         '-p:Platform=x64' '-p:WindowsAppSDKSelfContained=true' '-p:PublishSingleFile=false' '-p:PublishTrimmed=false' `
-        '-p:DebugType=None' '-p:DebugSymbols=false' "-p:Version=$Version" -o $stage --nologo
+        '-p:DebugType=None' '-p:DebugSymbols=false' "-p:Version=$Version" -o $appStage --nologo
     if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
-    foreach ($resource in @('App.xbf','MainWindow.xbf','InputFileList.xbf','OcrWorkspace.xbf','UninstallerWorkspace.xbf','Shunshou.App.pri')) {
-        if (-not (Test-Path -LiteralPath (Join-Path $stage $resource))) { throw "Published WinUI resource is missing: $resource" }
+    foreach ($resource in @('App.xbf','MainWindow.xbf','InputFileList.xbf','OcrWorkspace.xbf','UninstallerWorkspace.xbf','RecoveryWorkspace.xbf','ShopWorkspace.xbf','VideoWorkspace.xbf','ScreenRecordingWorkspace.xbf','ScreenRecordingBar.xbf','ScreenRecorderLib.dll','SubtitleWorkspace.xbf','WebPdfWorkspace.xbf','ToolboxTheme.xbf','Shunshou.App.pri')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $appStage $resource))) { throw "Published WinUI resource is missing: $resource" }
     }
-    $hostPath = Join-Path $stage 'Shunshou.App.exe'
+    $hostPath = Join-Path $appStage 'Shunshou.App.exe'
     if (-not (Test-Path -LiteralPath $hostPath)) { throw 'Published apphost is missing.' }
-    # Apphost embeds the original managed DLL name. Keep that DLL/runtimeconfig and the original host.
-    Copy-Item -LiteralPath $hostPath -Destination (Join-Path $stage 'ShunshouToolbox.exe')
-    # Unpackaged WinUI resolves its resource index from the running apphost name.
-    Copy-Item -LiteralPath (Join-Path $stage 'Shunshou.App.pri') -Destination (Join-Path $stage 'ShunshouToolbox.pri')
-    if (-not (Test-Path -LiteralPath (Join-Path $stage 'ShunshouToolbox.pri'))) { throw 'Product apphost resource index is missing.' }
-    Copy-Item -Path (Join-Path $repoRoot 'runtime/vcredist/bin/*.dll') -Destination $stage -Force
-    $vcLicenses = Join-Path $stage 'licenses/Microsoft.VisualCpp'
+    # Keep the original apphost and matching PRI together. The tiny native launcher
+    # at package root starts this private runtime without extracting another .NET.
+    & (Join-Path $PSScriptRoot 'Build-Launcher.ps1') -OutputPath (Join-Path $stage 'ShunshouToolbox.exe') -Version $Version
+    Copy-Item -Path (Join-Path $repoRoot 'runtime/vcredist/bin/*.dll') -Destination $appStage -Force
+    $vcLicenses = Join-Path $docsStage 'licenses/Microsoft.VisualCpp'
     New-Item -ItemType Directory -Force -Path $vcLicenses | Out-Null
     Get-ChildItem -LiteralPath (Join-Path $repoRoot 'runtime/vcredist') -File | Copy-Item -Destination $vcLicenses
     foreach ($relative in @('tools/ffmpeg/bin/ffplay.exe','tools/vcredist','Microsoft.Windows.Workloads.Resources_ec.dll')) {
-        $unneeded = Assert-ChildPath -Root $stage -Path (Join-Path $stage $relative)
+        $unneeded = Assert-ChildPath -Root $stage -Path (Join-Path $appStage $relative)
         if (Test-Path -LiteralPath $unneeded) { Remove-Item -LiteralPath $unneeded -Recurse -Force }
     }
     # Remove only incompatible platform payloads in this newly generated staging tree.
-    $runtimes = Join-Path $stage 'runtimes'
+    $runtimes = Join-Path $appStage 'runtimes'
     if (Test-Path -LiteralPath $runtimes) {
         foreach ($folder in Get-ChildItem -LiteralPath $runtimes -Directory) {
             if ($folder.Name -notin @('win-x64','win10-x64','win')) {
@@ -63,13 +78,21 @@ try {
         $safe = Assert-ChildPath -Root $stage -Path $file.FullName
         Remove-Item -LiteralPath $safe
     }
-    Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination (Join-Path $stage 'README.md')
-    Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination (Join-Path $stage 'Usage.md')
-    Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD-PARTY-NOTICES.md') -Destination $stage
-    if (Test-Path -LiteralPath (Join-Path $repoRoot 'docs')) { Copy-Item -LiteralPath (Join-Path $repoRoot 'docs') -Destination $stage -Recurse }
-    if (Test-Path -LiteralPath (Join-Path $repoRoot 'CHANGELOG.md')) { Copy-Item -LiteralPath (Join-Path $repoRoot 'CHANGELOG.md') -Destination $stage }
-    & (Join-Path $PSScriptRoot 'Collect-Licenses.ps1') -Destination (Join-Path $stage 'licenses')
-    & (Join-Path $PSScriptRoot 'Inspect-NativeDependencies.ps1') -Directory $stage -ReportPath (Join-Path $stage 'native-dependencies.json')
+    if (Test-Path -LiteralPath (Join-Path $repoRoot 'docs')) { Get-ChildItem -LiteralPath (Join-Path $repoRoot 'docs') | Copy-Item -Destination $docsStage -Recurse -Force }
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination (Join-Path $docsStage 'Usage.md')
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD-PARTY-NOTICES.md') -Destination $docsStage
+    if (Test-Path -LiteralPath (Join-Path $repoRoot 'CHANGELOG.md')) { Copy-Item -LiteralPath (Join-Path $repoRoot 'CHANGELOG.md') -Destination $docsStage }
+    & (Join-Path $PSScriptRoot 'Collect-Licenses.ps1') -Destination (Join-Path $docsStage 'licenses')
+    & (Join-Path $PSScriptRoot 'Build-ComponentCatalog.ps1') -DocsDirectory $docsStage -RuntimeDirectory (Join-Path $appStage 'tools')
+    $nativeLicenses = Join-Path $docsStage 'licenses/native-launcher'
+    New-Item -ItemType Directory -Path $nativeLicenses -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repoRoot '.tools/zig-x86_64-windows-0.15.2/LICENSE') -Destination (Join-Path $nativeLicenses 'Zig-LICENSE.txt')
+    Copy-Item -LiteralPath (Join-Path $repoRoot '.tools/zig-x86_64-windows-0.15.2/lib/libc/mingw/COPYING') -Destination (Join-Path $nativeLicenses 'MinGW-w64-COPYING.txt')
+    & (Join-Path $PSScriptRoot 'Inspect-NativeDependencies.ps1') -Directory $stage -ReportPath (Join-Path $docsStage 'native-dependencies.json')
+    $expectedRoot = @('app', 'docs', 'ShunshouToolbox.exe')
+    foreach ($entry in Get-ChildItem -LiteralPath $stage) {
+        if ($entry.Name -notin $expectedRoot) { throw "Unexpected package-root entry: $($entry.Name)" }
+    }
     $files = @(Get-ChildItem -LiteralPath $stage -Recurse -File | ForEach-Object {
         [ordered]@{ Path=[IO.Path]::GetRelativePath($stage,$_.FullName).Replace('\','/'); Bytes=$_.Length; Sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
     })

@@ -1,0 +1,24 @@
+{
+  "ytDlp": {
+    "Version": "2026.09.16.232951",
+    "Url": "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/download/2026.09.16.232951/yt-dlp",
+    "Sha256": "f8ca14db511702a5dbfc5a527056312907ddd0914d0b4036f108d6849e17ef61",
+    "License": "Unlicense; bundled meriyah ISC and astring MIT",
+    "SourceUrl": "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/download/2026.09.16.232951/yt-dlp.tar.gz",
+    "SourceSha256": "4680fe2eca4aa3a9ea66864933f75de696d1411f432eba261f5d452ae7cef160",
+    "NoticesUrl": "https://github.com/yt-dlp/yt-dlp/raw/2026.08.19/THIRD_PARTY_LICENSES.txt",
+    "NoticesSha256": "472aefe951c7db35e1657c1d13fd337140511ed6f2b329205105ad441c5a02b7"
+  },
+  "python": {
+    "Version": "3.13.15",
+    "Url": "https://www.python.org/ftp/python/3.13.15/python-3.13.15-embed-amd64.zip",
+    "Sha256": "d1f04d990aee1253d8569e8e5104e30fa9f5fa830899f14843448872d936a2cf",
+    "License": "PSF-2.0 and bundled third-party notices"
+  },
+  "node": {
+    "Version": "24.21.0",
+    "Url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-win-x64.zip",
+    "Sha256": "158f7685b44de51f6c0df1d153526cbcd3e1bc739a8dfc607721cef75de9e541",
+    "License": "MIT and bundled third-party notices"
+  }
+}

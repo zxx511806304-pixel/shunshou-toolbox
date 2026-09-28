@@ -23,6 +23,7 @@ public static class FileTests
         await Expect<ArgumentException>(() => service.SearchAsync(dir, "", false, null, default));
         await Expect<DirectoryNotFoundException>(() => service.SearchAsync(Path.Combine(dir, "missing"), "a", false, null, default));
         await RunMultiRootSearchAsync(root);
+        await RunIndexedAsync(root);
 
         var a = Path.Combine(dir, "a.txt"); var b = Path.Combine(dir, "b.txt");
         await File.WriteAllTextAsync(a, "Alpha"); await File.WriteAllTextAsync(b, "Beta");
@@ -178,6 +179,119 @@ public static class FileTests
                 drives.All(x => Path.IsPathRooted(x.RootPath) && !string.IsNullOrWhiteSpace(x.DisplayName)),
             "Local drive discovery returns unique absolute roots and usable labels without scanning their contents.");
         Console.WriteLine("PASS: local-drive discovery, multi-root traversal, incremental batches, duplicates, image filter, partial failure, result cap and cancellation retention.");
+    }
+
+    public static async Task RunIndexedAsync(string root, string? runtimeDirectory = null)
+    {
+        var fixture = Path.Combine(root, "indexed-" + Guid.NewGuid().ToString("N"));
+        var mockRuntime = Path.Combine(fixture, "mock-runtime");
+        Directory.CreateDirectory(mockRuntime);
+        await File.WriteAllTextAsync(Path.Combine(mockRuntime, "es.exe"), "not executed; injectable command runner");
+        await File.WriteAllTextAsync(Path.Combine(mockRuntime, "Everything.exe"), "not executed");
+        var scope = Path.Combine(fixture, "资料 [a]+!");
+        var output = "";
+        int exitCode = 0;
+        bool loading = false;
+        IReadOnlyList<string>? submitted = null;
+        static string Row(string path, string size, uint attributes) => $"\"{path.Replace("\"", "\"\"")}\",{size},{attributes}\r\n";
+        Task<EverythingCommandResult> Fake(IReadOnlyList<string> args, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (args.Contains("-get-everything-version")) return Task.FromResult(new EverythingCommandResult(0, "1.4.1.1032"));
+            if (args.Contains("-get-result-count")) return Task.FromResult(new EverythingCommandResult(loading ? 8 : 0, "1000"));
+            submitted = args;
+            return Task.FromResult(new EverythingCommandResult(exitCode, "Filename,Size,Attributes\r\n" + output));
+        }
+        var service = new EverythingSearchService(mockRuntime, Path.Combine(fixture, "data"), Fake);
+        Require((await service.GetStatusAsync()).State == EverythingIndexState.Ready, "A loaded external index is available without starting any process.");
+        loading = true;
+        Require((await service.GetStatusAsync()).State == EverythingIndexState.Loading, "A version reply alone cannot mark an unloaded index as ready.");
+        Require((await service.EnableAsync(null, default)).State == EverythingIndexState.Loading, "Enabling an already loading index waits without launching another elevated process.");
+        loading = false;
+        output = Row(Path.Combine(scope, "资料,a.jpg"), "1234", 32) + Row(Path.Combine(scope, "资料 folder"), "", 16) +
+            Row(Path.Combine(scope, "资料 folder", "unrelated.txt"), "12", 32) +
+            Row(Path.Combine(scope + "-sibling", "资料.jpg"), "12", 32) + Row(Path.Combine(scope, "资料-link.jpg"), "2", 1024);
+        var updates = new List<FileSearchUpdate>();
+        var found = await service.SearchAsync([scope], "资料", false, new InlineProgress<FileSearchUpdate>(updates.Add), default, batchSize: 1);
+        Require(found.IsIndexed && found.Results.Count == 2 && found.Results[0].Name == "资料,a.jpg" && found.Results[0].Size == 1234 && found.Results[1].IsDirectory,
+            "Indexed results retain Chinese, commas, file sizes and folders while rejecting out-of-scope/parent-name/reparse matches.");
+        Require(found.ScannedEntries == 0 && updates.All(x => x.IsIndexed) && updates[^1].IsCompleted && updates.Sum(x => x.Results.Count) == 2,
+            "Index queries report no directory traversal, with exactly-once result batches and a terminal update.");
+        var images = await service.SearchAsync([scope], "资料", true, null, default);
+        Require(images.Results.Count == 1 && images.Results[0].Name == "资料,a.jpg", "Image-only indexing excludes folders and non-images.");
+        output = Row(Path.Combine(scope, "[a]+! folder"), "0", 16);
+        var literal = await service.SearchAsync([scope], "[a]+!", false, null, default);
+        Require(literal.Results.Count == 1 && submitted is not null && !submitted[^1].Contains("[a]+!", StringComparison.Ordinal),
+            "Literal regex and Everything operators are encoded before reaching the native index.");
+        output = Row(Path.Combine(scope, "one.txt"), "1", 32);
+        var exact = await service.SearchAsync([scope], "one", false, null, default, maxResults: 1);
+        Require(exact.Results.Count == 1 && !exact.IsTruncated, "An exact native result limit is not falsely marked truncated.");
+        output += Row(Path.Combine(scope, "one-more.txt"), "2", 32);
+        var capped = await service.SearchAsync([scope], "one", false, null, default, maxResults: 1);
+        Require(capped.Results.Count == 1 && capped.IsTruncated, "The extra indexed match identifies truncation.");
+        using (var cancelled = new CancellationTokenSource())
+        {
+            var stopped = await service.SearchAsync([scope], "one", false, new InlineProgress<FileSearchUpdate>(update =>
+            { if (update.Results.Count > 0) cancelled.Cancel(); }), cancelled.Token, batchSize: 1);
+            Require(stopped.IsCancelled && stopped.Results.Count == 1, "Indexed cancellation retains only already delivered results.");
+        }
+        using (var cancelled = new CancellationTokenSource())
+        {
+            cancelled.Cancel();
+            var stopped = await service.SearchAsync([scope], "one", false, null, cancelled.Token);
+            Require(stopped.IsCancelled && stopped.Results.Count == 0, "Pre-cancelled index searches return a cancellation summary.");
+        }
+        output = "\"unfinished";
+        await Expect<InvalidDataException>(() => service.SearchAsync([scope], "one", false, null, default));
+        exitCode = 8;
+        await Expect<IOException>(() => service.SearchAsync([scope], "one", false, null, default));
+        await Expect<ArgumentException>(() => service.SearchAsync([], "one", false, null, default));
+        await Expect<ArgumentException>(() => service.SearchAsync([scope], " ", false, null, default));
+        await Expect<ArgumentOutOfRangeException>(() => service.SearchAsync([scope], "one", false, null, default, maxResults: 0));
+        var unavailable = new EverythingSearchService(mockRuntime, Path.Combine(fixture, "absent"), (_, _) => Task.FromResult(new EverythingCommandResult(8, "")));
+        Require((await unavailable.GetStatusAsync()).State == EverythingIndexState.NeedsEnable, "Unavailable IPC offers explicit enablement and never starts a disk scan.");
+        Console.WriteLine("PASS: indexed search state, unloaded database, literal Unicode names/operators, scoped filtering, CSV, images, limits and cancellation.");
+        if (runtimeDirectory is not null) await RunLiveIndexAsync(root, fixture, runtimeDirectory);
+    }
+
+    private static async Task RunLiveIndexAsync(string root, string fixture, string runtimeDirectory)
+    {
+        var service = new EverythingSearchService(runtimeDirectory, Path.Combine(fixture, "live-data"));
+        var status = await service.GetStatusAsync();
+        Require(status.State == EverythingIndexState.Ready, "Live integration requires an already running, loaded Everything index; it never installs or enables one.");
+        var folder = Path.Combine(fixture, "实际搜索 [a]+! space");
+        Directory.CreateDirectory(Path.Combine(folder, "parent-only-needle"));
+        await File.WriteAllTextAsync(Path.Combine(folder, "资料,[a]+!.JPG"), "fixture");
+        await File.WriteAllTextAsync(Path.Combine(folder, "资料,[a]+!.txt"), "fixture");
+        await File.WriteAllTextAsync(Path.Combine(folder, "parent-only-needle", "unrelated.txt"), "fixture");
+        // USN updates are asynchronous. This bounded fixture readiness poll is separate from timed queries.
+        FileSearchSummary? result = null;
+        var first = System.Diagnostics.Stopwatch.StartNew();
+        while (first.Elapsed < TimeSpan.FromSeconds(10))
+        {
+            result = await service.SearchAsync([folder], "[a]+!", false, null, default);
+            if (result.Results.Count == 2) break;
+            await Task.Delay(100);
+        }
+        Require(result?.Results.Count == 2 && result.Results.All(x => x.Name.Contains("资料,[a]+!", StringComparison.Ordinal)), "Actual ES preserves Chinese/comma/operator names and does not interpret regex operators.");
+        first.Stop();
+        var images = await service.SearchAsync([folder], "[a]+!", true, null, default);
+        Require(images.Results.Count == 1 && images.Results[0].Name.EndsWith(".JPG", StringComparison.Ordinal), "Actual index applies case-insensitive image extension filtering.");
+        var parent = await service.SearchAsync([folder], "parent-only-needle", false, null, default);
+        Require(parent.Results.Count == 1 && parent.Results[0].IsDirectory, "Actual index excludes a child matching only its parent folder name.");
+        var times = new List<double>();
+        var roots = new FileService().GetLocalDrives().Select(x => x.RootPath).ToArray();
+        int count = 0;
+        for (var i = 0; i < 5; i++)
+        {
+            var timed = await service.SearchAsync(roots, "Shunshou", false, null, default);
+            times.Add(timed.Elapsed.TotalMilliseconds); count = timed.Results.Count;
+            Require(timed.IsIndexed && !timed.IsCancelled && timed.ScannedEntries == 0, "Measured searches use the live index without any directory enumeration.");
+        }
+        var report = new { ExistingIndex = true, FirstFixtureVisibilityMs = first.Elapsed.TotalMilliseconds, Query = "Shunshou", ResultCount = count,
+            QueryMilliseconds = times, IncludesCliProcessStartup = true, FreshIndexBuildMeasured = false, FixtureChecksPassed = true };
+        await File.WriteAllTextAsync(Path.Combine(root, "indexed-search-results.json"), System.Text.Json.JsonSerializer.Serialize(report, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine($"PASS: live Everything index ({count} results); five searches: {string.Join(", ", times.Select(x => x.ToString("0.0")))} ms, including ES startup.");
     }
 
     private sealed class InlineProgress<T>(Action<T> action) : IProgress<T>

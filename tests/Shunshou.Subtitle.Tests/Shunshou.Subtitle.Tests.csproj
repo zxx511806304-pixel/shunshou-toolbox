@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/Shunshou.Core/SubtitleDownloadService.cs" Link="SubtitleDownloadService.cs" />
+    <Compile Include="../../src/Shunshou.Core/VideoDownloadService.cs" Link="VideoDownloadService.cs" />
+    <Compile Include="../../src/Shunshou.Core/ToolProgress.cs" Link="ToolProgress.cs" />
+  </ItemGroup>
+</Project>

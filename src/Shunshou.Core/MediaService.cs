@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace Shunshou.Core;
 
 /// <summary>Offline conversion using a private FFmpeg process. Target-size output always keeps the full duration.</summary>
-public sealed class MediaService(string? engineDirectory = null)
+public sealed partial class MediaService(string? engineDirectory = null)
 {
     private static readonly string TemporaryRoot = Path.Combine(Path.GetTempPath(), "Shunshou", "media-jobs");
     private static readonly int[] Mp3Rates = [32_000, 40_000, 48_000, 56_000, 64_000, 80_000, 96_000, 112_000, 128_000, 160_000, 192_000, 224_000, 256_000, 320_000];

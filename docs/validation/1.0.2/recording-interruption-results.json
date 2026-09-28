@@ -1,0 +1,106 @@
+{
+  "Passed": true,
+  "CaptureExecuted": true,
+  "MicrophoneCaptured": false,
+  "CapturedContent": "Generated animation window only; simulated monitoring failure with all audio capture disabled.",
+  "Results": [
+    {
+      "Name": "read-only-volume-api",
+      "DefaultMuted": true,
+      "DefaultVolume": 0,
+      "ExplicitMuted": true,
+      "ExplicitVolume": 0,
+      "UserSettingsChanged": false
+    },
+    {
+      "Name": "simulated-audio-monitoring-failure-preserves-video",
+      "Video": {
+        "Width": 640,
+        "Height": 360,
+        "FrameRate": 30,
+        "Duration": 2,
+        "Bitrate": 145564,
+        "AudioStreams": 0,
+        "Codec": "h264",
+        "Bytes": 36391,
+        "DistinctDecodedFrames": 10
+      },
+      "ActivePlan": {
+        "Display": {
+          "DeviceName": "fixture-window",
+          "DisplayName": "录屏测试窗口",
+          "Bounds": {
+            "X": 16,
+            "Y": 16,
+            "Width": 960,
+            "Height": 800
+          },
+          "IsPrimary": true
+        },
+        "Region": {
+          "X": 0,
+          "Y": 0,
+          "Width": 640,
+          "Height": 360
+        },
+        "OutputWidth": 640,
+        "OutputHeight": 360,
+        "FrameRate": 30,
+        "VideoBitrate": 2000000,
+        "AudioBitrateKbps": 192
+      },
+      "Output": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\recording-v1.0.2\\20260919-234738-bd9b7a\\recordings\\Recording_20260919_234742.mp4",
+      "State": "Failed",
+      "Error": "Generated test: simulated audio endpoint loss. 已保存中断前内容：Recording_20260919_234742.mp4",
+      "RealAudioDevicesChanged": false,
+      "SystemAudioCaptured": false,
+      "MicrophoneCaptured": false
+    },
+    {
+      "Name": "normal-restart-after-simulated-interruption",
+      "Video": {
+        "Width": 640,
+        "Height": 360,
+        "FrameRate": 60,
+        "Duration": 1.61665,
+        "Bitrate": 183347,
+        "AudioStreams": 0,
+        "Codec": "h264",
+        "Bytes": 37051,
+        "DistinctDecodedFrames": 8
+      },
+      "ActivePlan": {
+        "Display": {
+          "DeviceName": "fixture-window",
+          "DisplayName": "录屏测试窗口",
+          "Bounds": {
+            "X": 16,
+            "Y": 16,
+            "Width": 960,
+            "Height": 800
+          },
+          "IsPrimary": true
+        },
+        "Region": {
+          "X": 0,
+          "Y": 0,
+          "Width": 640,
+          "Height": 360
+        },
+        "OutputWidth": 640,
+        "OutputHeight": 360,
+        "FrameRate": 60,
+        "VideoBitrate": 2211840,
+        "AudioBitrateKbps": 192
+      },
+      "Output": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\recording-v1.0.2\\20260919-234738-bd9b7a\\recordings\\Recording_20260919_234745.mp4",
+      "State": "Completed"
+    }
+  ],
+  "Uncovered": [
+    "Real microphone capture is deliberately not exercised.",
+    "Multi-monitor/DPI combinations, first-time permissions, protected content, long recordings, and all GPU/driver combinations are not covered.",
+    "The audio interruption was simulated at the monitoring callback; no actual user device was disconnected or microphone captured."
+  ],
+  "Error": null
+}

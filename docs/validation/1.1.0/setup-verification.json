@@ -1,0 +1,19 @@
+{
+  "Passed": true,
+  "Version": "1.1.0",
+  "Sha256": "28048b40bb3f74ad7d41442d47f15589d05dabb5f0ca44eaf6c81fb4859cd7df",
+  "Checks": [
+    "Unchecked setup repairs existing owned shortcuts without creating missing or replacing unrelated links",
+    "Embedded payload length and SHA256 match build metadata",
+    "Fresh extraction: every managed file matches the embedded manifest",
+    "Shared app/elevated leases and exclusive update lease exclude each other",
+    "Fixture desktop shortcut target, no duplicates, deletion preference and explicit recreation",
+    "Full old ZIP \u2192 embedded version update, exact settings/output/history/key preservation and retained backup",
+    "Desktop and registration are isolated fixtures; no real user desktop/registry writes or program launch"
+  ],
+  "FreshDirectory": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\setup-1.1.0\\fresh",
+  "UpdatedDirectory": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\setup-1.1.0\\updated",
+  "PreviousBackupDirectory": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\setup-1.1.0\\.shunshou-7c7058a90f96b304-backup-3a77e96df2ab44598a32f494d31f0364",
+  "UserDesktopWrites": 0,
+  "UserRegistryWrites": 0
+}

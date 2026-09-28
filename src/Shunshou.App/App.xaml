@@ -1,44 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Application
-    x:Class="Shunshou.App.App"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:Shunshou.App">
-    <Application.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <!-- Other merged dictionaries here -->
-            </ResourceDictionary.MergedDictionaries>
-            <ResourceDictionary.ThemeDictionaries>
-                <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="WorkspaceBrush" Color="#F4F6F8" />
-                    <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
-                    <SolidColorBrush x:Key="SurfaceStrokeBrush" Color="#E4E8EC" />
-                    <SolidColorBrush x:Key="BrandBrush" Color="#087E81" />
-                    <SolidColorBrush x:Key="BrandSoftBrush" Color="#E4F3F1" />
-                    <SolidColorBrush x:Key="MutedBrush" Color="#5D6A75" />
-                </ResourceDictionary>
-                <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="WorkspaceBrush" Color="#202428" />
-                    <SolidColorBrush x:Key="SurfaceBrush" Color="#292F34" />
-                    <SolidColorBrush x:Key="SurfaceStrokeBrush" Color="#3B454D" />
-                    <SolidColorBrush x:Key="BrandBrush" Color="#72D8CF" />
-                    <SolidColorBrush x:Key="BrandSoftBrush" Color="#24433F" />
-                    <SolidColorBrush x:Key="MutedBrush" Color="#B3C0C9" />
-                </ResourceDictionary>
-                <ResourceDictionary x:Key="HighContrast">
-                    <SolidColorBrush x:Key="WorkspaceBrush" Color="{ThemeResource SystemColorWindowColor}" />
-                    <SolidColorBrush x:Key="SurfaceBrush" Color="{ThemeResource SystemColorWindowColor}" />
-                    <SolidColorBrush x:Key="SurfaceStrokeBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
-                    <SolidColorBrush x:Key="BrandBrush" Color="{ThemeResource SystemColorHighlightColor}" />
-                    <SolidColorBrush x:Key="BrandSoftBrush" Color="{ThemeResource SystemColorWindowColor}" />
-                    <SolidColorBrush x:Key="MutedBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
-                </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
-            <Style x:Key="CardStyle" TargetType="Border"><Setter Property="Background" Value="{ThemeResource SurfaceBrush}" /><Setter Property="BorderBrush" Value="{ThemeResource SurfaceStrokeBrush}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="10" /><Setter Property="Padding" Value="18" /></Style>
-            <Style x:Key="MutedTextStyle" TargetType="TextBlock"><Setter Property="Foreground" Value="{ThemeResource MutedBrush}" /><Setter Property="FontSize" Value="13" /><Setter Property="TextWrapping" Value="Wrap" /></Style>
-        </ResourceDictionary>
-    </Application.Resources>
+<Application x:Class="Shunshou.App.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="using:Shunshou.App">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+        <ResourceDictionary Source="ms-appx:///ToolboxTheme.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
 </Application>
 

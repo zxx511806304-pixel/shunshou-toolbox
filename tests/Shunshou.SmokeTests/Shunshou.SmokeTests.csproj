@@ -5,6 +5,7 @@
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="DiscUtils.Ntfs" Version="0.16.13" PrivateAssets="all" />
     <ProjectReference Include="../../src/Shunshou.Core/Shunshou.Core.csproj" />
     <None Update="Fixtures/**" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../../runtime/ocr/**" Link="tools/ocr/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

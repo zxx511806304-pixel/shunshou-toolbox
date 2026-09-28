@@ -1,0 +1,49 @@
+<UserControl x:Class="Shunshou.App.LargeFilesWorkspace" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid RowSpacing="12">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <Border Style="{StaticResource CardStyle}" Padding="18,14">
+      <StackPanel Spacing="10">
+        <TextBlock Text="大文件扫描" FontSize="16" FontWeight="SemiBold"/>
+        <TextBlock Text="快速找出磁盘上占用空间最大的文件，支持打开所在位置或删除到回收站。" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"/>
+        <Grid ColumnSpacing="12" RowSpacing="8">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <Button Content="选择目录" Click="PickFolder_Click" AutomationProperties.Name="选择要扫描的目录"/>
+          <TextBox x:Name="FolderBox" Grid.Column="1" Text="C:\" IsReadOnly="True" VerticalAlignment="Center" AutomationProperties.Name="当前扫描目录"/>
+          <NumberBox x:Name="MinSizeBox" Grid.Column="2" Header="最小大小（MB）" Minimum="1" Maximum="1048576" SpinButtonPlacementMode="Compact" Width="160" AutomationProperties.Name="大文件最小大小"/>
+          <Button x:Name="ScanButton" Grid.Column="3" Content="开始扫描" Style="{StaticResource AccentButtonStyle}" Click="Scan_Click" Padding="20,8" AutomationProperties.Name="开始扫描大文件"/>
+          <Button x:Name="CancelButton" Grid.Column="4" Content="取消" Click="Cancel_Click" IsEnabled="False" AutomationProperties.Name="取消扫描"/>
+        </Grid>
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <TextBlock x:Name="ScanStatus" Style="{StaticResource MutedTextStyle}" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite"/>
+          <TextBlock x:Name="TotalText" Style="{StaticResource MutedTextStyle}" VerticalAlignment="Center"/>
+        </StackPanel>
+        <InfoBar x:Name="Notice" IsOpen="False" IsClosable="True" Severity="Warning"/>
+      </StackPanel>
+    </Border>
+    <Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="18,14">
+      <Grid RowSpacing="8">
+        <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <ListView x:Name="ResultList" AutomationProperties.Name="大文件列表" SelectionMode="None" IsItemClickEnabled="False">
+          <ListView.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnSpacing="12" Padding="0,4">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel Spacing="2">
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="{Binding Path}" Style="{StaticResource MutedTextStyle}" FontSize="12" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{Binding Path}"/>
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{Binding SizeText}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="{Binding ModifiedText}" Style="{StaticResource MutedTextStyle}" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8">
+                  <Button Content="打开所在位置" Click="OpenLocation_Click" Tag="{Binding Path}" AutomationProperties.Name="打开文件所在位置"/>
+                  <Button Content="删除到回收站" Click="Delete_Click" Tag="{Binding Path}" AutomationProperties.Name="删除文件到回收站"/>
+                </StackPanel>
+              </Grid>
+            </DataTemplate>
+          </ListView.ItemTemplate>
+        </ListView>
+        <TextBlock x:Name="EmptyHint" Grid.Row="1" Text="尚未扫描。点击「开始扫描」查找大文件。" Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Center" Margin="0,12"/>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

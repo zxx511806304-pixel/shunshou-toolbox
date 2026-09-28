@@ -1,0 +1,62 @@
+<UserControl x:Class="Shunshou.App.CharacterLibraryWorkspace" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <UserControl.Resources>
+    <Style x:Key="CharacterGroupTitleStyle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{ThemeResource TextBrush}"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style x:Key="CharacterGroupLevelStyle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Foreground" Value="{ThemeResource MutedBrush}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <!-- Theme-aware tile chrome; applied from code so light, dark and high-contrast all follow the app brushes. -->
+    <Style x:Key="CharacterTileChromeStyle" TargetType="Border">
+      <Setter Property="Width" Value="52"/>
+      <Setter Property="Height" Value="48"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="{ThemeResource SurfaceStrokeBrush}"/>
+      <Setter Property="Background" Value="{ThemeResource ControlBrush}"/>
+    </Style>
+    <Style x:Key="CharacterTileGlyphStyle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="19"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="Foreground" Value="{ThemeResource TextBrush}"/>
+    </Style>
+  </UserControl.Resources>
+  <Grid RowSpacing="12">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <Border Style="{StaticResource CardStyle}" Padding="18,14">
+      <StackPanel Spacing="10">
+        <Grid ColumnSpacing="12">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="240"/></Grid.ColumnDefinitions>
+          <Grid ColumnSpacing="10">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBox x:Name="SearchBox" Header="查找字符" PlaceholderText="输入字符、名称或编码，例如 勾号 / ✓ / 2713" TextChanged="Search_Changed" AutomationProperties.Name="查找特殊字符"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+              <Button x:Name="ClearSearchButton" Content="显示全部" Padding="12,5" Click="ClearSearch_Click" AutomationProperties.Name="清除查找并显示全部字符"/>
+              <Button x:Name="CopyAllButton" Click="CopyAll_Click" Padding="12,5" AutomationProperties.Name="复制当前显示的全部字符" ToolTipService.ToolTip="把当前筛选出的全部字符复制到剪贴板">
+                <StackPanel Orientation="Horizontal" Spacing="6"><FontIcon Glyph="&#xE8C8;" FontSize="13"/><TextBlock Text="复制全部"/></StackPanel>
+              </Button>
+            </StackPanel>
+          </Grid>
+          <TextBox x:Name="CurrentCharBox" Grid.Column="1" Header="当前字符（可选中复制）" IsReadOnly="True" FontSize="19" AutomationProperties.Name="最近复制的字符"/>
+        </Grid>
+        <TextBlock x:Name="StatusText" Text="点击任意字符即可复制到剪贴板。" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+        <TextBlock x:Name="CountText" Style="{StaticResource MutedTextStyle}" FontSize="12"/>
+        <InfoBar x:Name="Notice" IsOpen="False" IsClosable="True" Severity="Warning"/>
+      </StackPanel>
+    </Border>
+    <Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="18,14">
+      <Grid>
+        <ScrollViewer x:Name="GroupScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0" SizeChanged="GroupScroll_SizeChanged">
+          <StackPanel x:Name="GroupHost" Spacing="18"/>
+        </ScrollViewer>
+        <TextBlock x:Name="EmptyHint" Text="没有匹配的字符，换个关键词试试。" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource MutedTextStyle}"/>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

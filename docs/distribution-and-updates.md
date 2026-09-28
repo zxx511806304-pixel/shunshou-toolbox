@@ -2,15 +2,37 @@
 
 ## 两种下载方式
 
-`ShunshouToolbox-<版本>-win-x64.zip` 是完整便携包；`ShunshouToolbox-<版本>-win-x64-setup.exe` 将同一个 ZIP 和校验元数据放入独立自解压程序。两种包中的工具功能一致，运行及解压更新不依赖联网、账号或激活服务。
+`ShunshouToolbox-<版本>-win-x64.zip` 是完整便携包；`ShunshouToolbox-<版本>-win-x64-setup.exe` 将同一个 ZIP 和校验元数据放入独立自解压程序。两种包中的工具功能一致，本地工具及解压更新不依赖联网、账号或激活服务；读取网页、下载视频和字幕需要网络。
 
 首次使用 EXE 时，选择一个长期保存软件的可写文件夹，保留默认勾选的“创建桌面快捷方式”即可。文件夹无需每个版本都更换。普通 ZIP 自身不会在解压时执行程序；ZIP 版在首次正常启动时创建快捷方式。用户删除已有快捷方式后，后续启动会尊重这一选择。
 
 默认路径使用系统盘当前用户的应用数据目录，不要求写入 Program Files，正常部署不请求管理员权限。需要放到其他盘时，可选择有写入权限的目录。
 
-0.2.2 起主入口为 `ShunshouToolbox.exe`，同名 `ShunshouToolbox.pri` 必须保留。安装默认目录为 `%LOCALAPPDATA%/Programs/ShunshouToolbox`，转换默认输出为 Windows 文档目录下的 `ShunshouToolbox/Output`。界面及桌面名称保留中文，已有用户目录不自动更名。带旧中文入口和有效清单的旧包仍可更新；已有自有快捷方式会指向新的英文入口。
+主入口为 `ShunshouToolbox.exe`。安装默认目录为 `%LOCALAPPDATA%/Programs/ShunshouToolbox`，转换默认输出为 Windows 文档目录下的 `ShunshouToolbox/Output`。界面及桌面名称保留中文，已有用户目录不自动更名。带旧中文入口和有效清单的旧包仍可更新；已有自有快捷方式会指向新的英文入口。
 
 快捷方式只是软件入口，实际文件仍保存在选择的文件夹中。不要只保留快捷方式，或只从软件目录复制主 EXE。部署不会建立系统“已安装的应用”卸载项，也不注册自动运行或后台更新服务。
+
+## 1.0.0 目录布局
+
+全新解压后根目录只有四项；首次正常启动时创建第五项 `data`：
+
+```text
+ShunshouToolbox/
+  ShunshouToolbox.exe       原生启动入口
+  app/                     应用、运行库、语言资源、Assets、tools
+    Shunshou.App.exe
+    Shunshou.App.dll
+    Shunshou.App.pri
+  docs/                    使用说明、许可、依赖报告
+  package-manifest.json    程序文件及哈希清单
+  data/                    启动后生成的本地记录、日志和备份
+```
+
+WinUI 需要的语言资源完整移入 `app`，不通过删语言文件制造精简效果。根入口是约 107 KiB 的原生 Windows 程序：定位 `app/Shunshou.App.exe`，原样转发参数，以根目录为工作目录，等待应用结束并返回退出码；管理员重启仍使用同一个根入口。它不额外携带第二套 .NET 运行库。桌面快捷方式及包身份验证均定位根入口，`app/Shunshou.App.pri` 必须与内部应用一起保留。
+
+应用通过产品清单识别这种布局，不仅凭父目录名为 `app` 作判断。便携运行、安装更新及旧版平铺开发目录均有各自的路径处理。`data` 位于软件根目录，更新不会将其迁入内部运行库目录。
+
+PhotoRec 的完整对应源码另提供 `RecoverySources-1.0.0.zip`，与二进制从同一下载位置提供；它不放入安装目录。来源、许可及构建资料见 [恢复源码说明](RecoverySources.md)。
 
 ## 更新同一位置
 
@@ -25,6 +47,8 @@
 ## 保留哪些文件
 
 部署会保留完整 `data` 目录以及不属于旧包文件清单的用户文件。例如：`data/rename-history`、`data/uninstall-backups`、完整性密钥、自己存入软件目录的文档或输出文件。用户内容与新版程序文件发生路径冲突时应停止并明确提示，避免用程序文件覆盖用户内容。
+
+从 0.2.2 平铺目录升级时，清单管理的 DLL、资源及语言目录由新布局接管；仅由旧包占用且已无保留内容的空目录不带入新版。用户新增文件、需要保留的父目录及不归包管理的空文件夹都会保留，整个旧目录仍有备份。因此“全新根目录四项”不代表升级时删除一切额外项目，旧软件文件夹有用户内容时仍可能多于五项。
 
 包文件清单中的程序文件会由新版本管理；不要把个人文档保存为这些文件名，也不要依赖修改已发布的程序资源来保存个人设置。外部输出目录不参与软件目录切换。
 
@@ -47,15 +71,16 @@
 ## 构建与验证
 
 ```powershell
-pwsh ./scripts/Build-Portable.ps1 -Version 0.2.2
-pwsh ./scripts/Build-Setup.ps1 -Version 0.2.2
+pwsh ./scripts/Build-Portable.ps1 -Version 1.0.0
+pwsh ./scripts/Build-Setup.ps1 -Version 1.0.0
+pwsh ./scripts/Build-RecoverySources.ps1 -Version 1.0.0
 
 # 使用指定的完整 ZIP 和新的输出目录，保留已有发布文件。
-pwsh ./scripts/Build-Setup.ps1 -Version 0.2.2 -PayloadZip ./dist/ShunshouToolbox-0.2.2-win-x64.zip -OutputRoot ./artifacts/setup-build
+pwsh ./scripts/Build-Setup.ps1 -Version 1.0.0 -PayloadZip ./dist/ShunshouToolbox-1.0.0-win-x64.zip -OutputRoot ./artifacts/setup-build
 ```
 
 `Build-Setup.ps1` 校对 ZIP 内包清单的产品、版本和体系结构，计算嵌入包的 SHA256，并在发布期间保持只读文件句柄。构建使用自带 .NET 的单文件发布，包含本地运行库，关闭裁剪并压缩单文件。构建脚本不会自动部署软件或写桌面；最终 EXE 另生成 SHA256 文件。已有同名 EXE 或哈希文件时拒绝覆盖。
 
-部署与桌面集成测试在独立生成目录中进行，不改用户实际桌面，也不更新现有软件目录。正式发布还需要用最终 EXE 验证全新部署、从上一 ZIP 版本升级、运行中阻止更新、取消、故障恢复、数据哈希以及解压后程序启动。测试报告应区分模拟故障、真实包验证及尚未在干净电脑验证的环境；当前证据见 [0.2.2 测试报告](validation-0.2.2.md)及 [0.2.1 测试报告](validation-0.2.1.md)。
+部署与桌面集成测试在独立生成目录中进行，不改用户实际桌面，也不更新现有软件目录。正式发布还需要用最终 EXE 验证全新部署、从上一 ZIP 版本升级、运行中阻止更新、取消、故障恢复、数据哈希以及解压后程序启动。测试报告应区分模拟故障、真实包验证及尚未在干净电脑验证的环境；当前证据与尚待补充的最终验证见 [1.0.0 验证记录](validation-1.0.0.md)，历史结果见 [0.2.2 测试报告](validation-0.2.2.md)。
 
 本版自解压 EXE 未提供代码签名，仍可能触发 Windows 对新发布可执行文件的提示。更换 EXE 包装不等于差分更新：目前每次下载仍携带完整工具、OCR 模型和转换运行库。在线自动更新、组件增量包、差分包与代码签名是后续独立工作。

@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '0.2.2',
+    [string]$Version = '1.0.2',
     [string]$PayloadZip = '',
     [string]$OutputRoot = '',
     [string]$Dotnet = ''
@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Runtime.Common.ps1')
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Use a three-part numeric version, for example 0.2.2.' }
+if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Use a three-part numeric version, for example 0.3.0.' }
 if ([string]::IsNullOrWhiteSpace($OutputRoot)) { $OutputRoot = Join-Path $repoRoot 'dist' }
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
 $name = "ShunshouToolbox-$Version-win-x64"
@@ -67,6 +67,8 @@ try {
         '-p:PublishTrimmed=false' '-p:DebugType=None' '-p:DebugSymbols=false' "-p:Version=$Version" `
         "-p:PayloadZip=$PayloadZip" "-p:PayloadMetadata=$metadataPath" -o $publish --nologo
     if ($LASTEXITCODE -ne 0) { throw 'Setup dotnet publish failed.' }
+    # Referenced projects may still emit .pdb symbols despite DebugType=None.
+    Get-ChildItem -LiteralPath $publish -Recurse -File | Where-Object { $_.Extension -eq '.pdb' } | Remove-Item -Force
     $hostPath = Join-Path $publish 'Shunshou.Setup.exe'
     if (-not (Test-Path -LiteralPath $hostPath -PathType Leaf)) { throw 'Published setup apphost is missing.' }
     $sidecars = @(Get-ChildItem -LiteralPath $publish -File | Where-Object { $_.Name -ne 'Shunshou.Setup.exe' })

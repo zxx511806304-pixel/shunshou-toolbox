@@ -45,7 +45,7 @@ public sealed record UninstallEnvironment(string BackupDirectory, IReadOnlyList<
     IReadOnlyList<string> ProtectedDirectories, IReadOnlyList<string> ProtectedTrees)
 {
     public static UninstallEnvironment Default => new(
-        System.IO.Path.Combine(AppContext.BaseDirectory, "data", "uninstall-backups"),
+        System.IO.Path.Combine(AppPaths.DataDirectory, "uninstall-backups"),
         [Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
          Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
          Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData)],
@@ -64,5 +64,5 @@ public sealed record UninstallEnvironment(string BackupDirectory, IReadOnlyList<
          Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
          Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
          System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
-         AppContext.BaseDirectory]);
+         AppPaths.InstallationDirectory]);
 }

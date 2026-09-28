@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
+using System.Security.Cryptography;
 using Shunshou.Core;
 
 namespace Shunshou.App;
@@ -56,6 +57,26 @@ internal static class PackageVerification
                 .ConvertAsync(wav, outputDir, "mp3", null, null, default);
             Require(new FileInfo(mp3).Length > 0, "MP3 output missing");
             checks.Add("Bundled FFmpeg: WAV to MP3 + decode and duration validation");
+            // Exercise the shipped native recovery dependency chain on a generated image only.
+            // Never read a live volume or the user's Recycle Bin in release verification.
+            string recoveryImage = OutputPaths.Unique(outputDir, "recovery-fixture.raw");
+            byte[] knownPng = await File.ReadAllBytesAsync(imagePath);
+            await using (var image = new FileStream(recoveryImage, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                image.SetLength(8 * 1024 * 1024);
+                image.Position = 1024 * 1024;
+                await image.WriteAsync(knownPng);
+            }
+            byte[] before = SHA256.HashData(await File.ReadAllBytesAsync(recoveryImage));
+            var recovery = await new RecoveryService().ScanAsync(new(recoveryImage,
+                Path.Combine(outputDir, "recovery-candidates"), RecoveryMode.DeepScan), null, default);
+            bool exactImage = false;
+            foreach (var candidate in recovery.Files.Where(f => f.Extension == "png" && f.Length == knownPng.Length))
+                if ((await File.ReadAllBytesAsync(candidate.StoredPath)).SequenceEqual(knownPng)) exactImage = true;
+            Require(exactImage && !recovery.Cancelled, "Bundled PhotoRec did not recover the exact artificial PNG");
+            byte[] after = SHA256.HashData(await File.ReadAllBytesAsync(recoveryImage));
+            Require(before.SequenceEqual(after), "Recovery modified its artificial source");
+            checks.Add("Bundled PhotoRec and Cygwin: artificial raw image → byte-identical PNG; source hash unchanged");
             var report = new { Passed = true, BaseDirectory = AppContext.BaseDirectory, Checks = checks, Ocr = text };
             await File.WriteAllTextAsync(Path.Combine(outputDir, "package-verification.json"), JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
             return 0;

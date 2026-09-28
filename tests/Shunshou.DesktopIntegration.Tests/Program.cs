@@ -20,9 +20,12 @@ internal static class Program
         }
         if (args.Length == 4 && args[0] == "--lease-probe")
         {
-            using var lease = args[3] == "reader"
-                ? UpdateCoordination.AcquireApplicationLease(args[1], args[2])
-                : UpdateCoordination.AcquireUpdateLease(args[1], args[2]);
+            using var lease = args[3] switch
+            {
+                "reader" => UpdateCoordination.AcquireApplicationLease(args[1], args[2]),
+                "existing-reader" => UpdateCoordination.AcquireExistingApplicationLease(args[1], args[2]),
+                _ => UpdateCoordination.AcquireUpdateLease(args[1], args[2])
+            };
             return lease is null ? 77 : 0;
         }
         var root = Path.GetFullPath(args.FirstOrDefault() ?? "artifacts/desktop-integration");
@@ -33,11 +36,14 @@ internal static class Program
         {
             ShortcutLifecycle(root, cases);
             LegacyPackageMigration(root, cases);
+            CleanLayoutMigration(root, cases);
             PreserveUnrelated(root, cases);
             ExplicitOptOut(root, cases);
             RejectInvalidPackage(root, cases);
             RegistrationFailureNonfatal(root, cases);
+            StartupEntryLifecycle(root, cases);
             SharedLeases(root, cases);
+            ExistingRecoveryLeases(root, cases);
             RunningProcessDiscovery(root, cases);
             var report = new { Passed = true, Cases = cases, OutputDirectory = root, RealDesktopWrites = 0, RealRegistryWrites = 0 };
             File.WriteAllText(Path.Combine(root, "verification.json"), JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
@@ -140,6 +146,25 @@ internal static class Program
         cases.Add("Unrelated existing desktop shortcut preserved byte-for-byte");
     }
 
+    private static void CleanLayoutMigration(string root, List<string> cases)
+    {
+        var scope = Path.Combine(root, "clean-layout");
+        var directory = CreatePackage(Path.Combine(scope, "便携工具"));
+        var desktop = Path.Combine(scope, "desktop");
+        var service = new DesktopShortcutService(desktop, new FixtureRegistration());
+        service.EnsureShortcut(directory);
+        CreatePackage(directory, version: "0.3.0");
+        Assert(PackageIdentity.GetExecutablePath(directory) == Path.Combine(directory, PackageIdentity.ExecutableName), "Clean manifest resolves the root launcher.");
+        var result = service.EnsureShortcut(directory);
+        Assert(result.Status == ShortcutStatus.AlreadyCorrect, "Existing root shortcut remains valid after private runtime migration.");
+        var info = DesktopShortcutService.ReadShortcut(result.ShortcutPath!);
+        Assert(info.TargetPath == Path.Combine(directory, PackageIdentity.ExecutableName) && info.WorkingDirectory == directory && info.IconPath == info.TargetPath,
+            "Shortcut target, working directory and icon all use the clean root entry.");
+        File.AppendAllText(Path.Combine(directory, "app", "Shunshou.App.exe"), "tampered");
+        Assert(PackageIdentity.GetExecutablePath(directory) is null, "Modified private apphost invalidates package identity even when launcher is unchanged.");
+        cases.Add("0.3.0 private runtime preserves root shortcut, icon and working directory; damaged inner apphost is rejected");
+    }
+
     private static void ExplicitOptOut(string root, List<string> cases)
     {
         var scope = Path.Combine(root, "opt-out");
@@ -174,6 +199,51 @@ internal static class Program
         var result = service.InitializeOnNormalLaunch(directory);
         Assert(result.Warnings.Count == 1 && result.Shortcut?.Status == ShortcutStatus.Created, "Denied registration is reported without breaking shortcut initialization.");
         cases.Add("Registration denial is nonfatal and isolated from shortcut creation");
+    }
+
+    /// <summary>Start-up entry behaviour is proven with an injected store, so the real Run key is never touched.</summary>
+    private static void StartupEntryLifecycle(string root, List<string> cases)
+    {
+        string directory = Path.Combine(root, "startup", "顺手工具箱");
+        Directory.CreateDirectory(directory);
+        string launcher = Path.Combine(directory, "ShunshouToolbox.exe");
+        File.WriteAllText(launcher, "inert fixture");
+        var store = new FixtureStartupStore();
+        var startup = new StartupRegistration(store);
+        Assert(startup.Read(launcher) == StartupRegistrationState.Disabled, "A missing entry reads as disabled.");
+        Assert(startup.Enable(launcher), "Enabling writes the entry.");
+        string expected = StartupRegistration.ExpectedValue(launcher);
+        Assert(store.Values[StartupRegistration.ValueName] == expected, "The entry quotes the launcher and passes the start-up switch.");
+        Assert(expected.EndsWith("\" " + StartupRegistration.StartupArgument, StringComparison.Ordinal), "The start-up switch keeps the window minimised at boot.");
+        Assert(startup.Read(launcher) == StartupRegistrationState.Enabled, "An entry that matches this copy reads as enabled.");
+        Assert(startup.Disable() && !store.Values.ContainsKey(StartupRegistration.ValueName), "Disabling removes this product's entry.");
+        Assert(startup.Read(launcher) == StartupRegistrationState.Disabled, "A removed entry reads as disabled again.");
+
+        string moved = Path.Combine(root, "startup", "移动后的 顺手工具箱");
+        Directory.CreateDirectory(moved);
+        string movedLauncher = Path.Combine(moved, "ShunshouToolbox.exe");
+        File.WriteAllText(movedLauncher, "inert fixture");
+        store.Values[StartupRegistration.ValueName] = StartupRegistration.ExpectedValue(launcher);
+        Assert(startup.Read(movedLauncher) == StartupRegistrationState.PointsElsewhere, "An entry pointing at another copy is reported, not silently accepted.");
+        var repaired = startup.SyncOnLaunch(movedLauncher, out bool changed);
+        Assert(changed && repaired == StartupRegistrationState.Enabled, "A normal launch repairs an enabled entry after the folder moved.");
+        Assert(store.Values[StartupRegistration.ValueName] == StartupRegistration.ExpectedValue(movedLauncher), "The repaired entry names the running copy.");
+        startup.Disable();
+        var stillDisabled = startup.SyncOnLaunch(movedLauncher, out bool created);
+        Assert(stillDisabled == StartupRegistrationState.Disabled && !created && !store.Values.ContainsKey(StartupRegistration.ValueName),
+            "A launch never turns a disabled entry into an enabled one.");
+
+        store.Values[StartupRegistration.ValueName] = "\"C:\\Windows\\notepad.exe\"";
+        Assert(startup.Read(launcher) == StartupRegistrationState.PointsElsewhere, "A same-named entry from elsewhere is not treated as ours.");
+        Assert(!startup.Disable(), "Disabling refuses to delete an entry that belongs to another program.");
+        Assert(store.Values.ContainsKey(StartupRegistration.ValueName), "The unrelated entry survives untouched.");
+        store.Values.Remove(StartupRegistration.ValueName);
+
+        var denied = new StartupRegistration(new FixtureStartupStore { DenyAccess = true });
+        Assert(denied.Read(launcher) == StartupRegistrationState.Unavailable, "A blocked store reads as unavailable instead of crashing.");
+        Assert(!denied.Enable(launcher), "A blocked write reports failure so the menu can revert.");
+        Assert(!denied.Disable(), "A blocked delete reports failure instead of claiming success.");
+        cases.Add("Start-up entry: enable, disable, moved-folder repair, foreign-entry protection and denial");
     }
 
     private static void SharedLeases(string root, List<string> cases)
@@ -223,6 +293,42 @@ internal static class Program
         return process.ExitCode;
     }
 
+    private static void ExistingRecoveryLeases(string root, List<string> cases)
+    {
+        var scope = Path.Combine(root, "recovery-leases");
+        var directory = Path.Combine(scope, "app");
+        var lockRoot = Path.Combine(scope, "locks");
+        Directory.CreateDirectory(directory);
+        using (var absent = UpdateCoordination.AcquireExistingApplicationLease(directory, lockRoot))
+            Assert(absent is null && !Directory.Exists(lockRoot), "Read-only recovery lease does not create a missing lock directory.");
+        Assert(RunProbe(directory, lockRoot, "existing-reader") == 77 && !Directory.Exists(lockRoot), "Separate recovery process refuses a missing lease without filesystem writes.");
+        using (var normal = UpdateCoordination.AcquireApplicationLease(directory, lockRoot))
+            Assert(normal is not null, "Normal launch establishes its existing lease fixture.");
+        var lockFile = Directory.GetFiles(lockRoot).Single();
+        var bytes = File.ReadAllBytes(lockFile);
+        var writeTime = File.GetLastWriteTimeUtc(lockFile);
+        using (var recovery = UpdateCoordination.AcquireExistingApplicationLease(directory, lockRoot))
+        {
+            Assert(recovery is not null, "Read-only recovery acquires the existing lease.");
+            Assert(RunProbe(directory, lockRoot, "existing-reader") == 0, "An elevated/second recovery process can share the existing lease.");
+            using var blocked = UpdateCoordination.AcquireUpdateLease(directory, lockRoot);
+            Assert(blocked is null, "Read-only recovery lease still blocks update.");
+        }
+        using (var updater = UpdateCoordination.AcquireUpdateLease(directory, lockRoot))
+        {
+            Assert(updater is not null, "Exclusive updater enters after recovery finishes.");
+            using var blocked = UpdateCoordination.AcquireExistingApplicationLease(directory, lockRoot);
+            Assert(blocked is null && RunProbe(directory, lockRoot, "existing-reader") == 77, "Active update blocks local and separate read-only recovery launches.");
+        }
+        Assert(Directory.GetFiles(lockRoot).Length == 1 && File.ReadAllBytes(lockFile).SequenceEqual(bytes) && File.GetLastWriteTimeUtc(lockFile) == writeTime,
+            "Existing recovery lease does not change file bytes, timestamp or create extra files.");
+        var otherDirectory = Path.Combine(scope, "new-package");
+        Directory.CreateDirectory(otherDirectory);
+        using (var missing = UpdateCoordination.AcquireExistingApplicationLease(otherDirectory, lockRoot))
+            Assert(missing is null && Directory.GetFiles(lockRoot).Length == 1, "Existing lock directory cannot cause recovery to create a missing package lock.");
+        cases.Add("Recovery leases only open existing files; missing leases refuse without writes and exclusive updates remain blocked across processes");
+    }
+
     private static void RunningProcessDiscovery(string root, List<string> cases)
     {
         var packageRoot = Path.Combine(root, "processes", "app");
@@ -231,6 +337,8 @@ internal static class Program
         using var legacyApplication = StartWaitingProbe(packageRoot, "顺手工具箱.exe");
         using var internalApplication = StartWaitingProbe(packageRoot, "Shunshou.App.exe");
         using var tool = StartWaitingProbe(Path.Combine(packageRoot, "tools", "fixture"), "fixture-helper.exe");
+        using var privateApplication = StartWaitingProbe(Path.Combine(packageRoot, "app"), "Shunshou.App.exe");
+        using var privateTool = StartWaitingProbe(Path.Combine(packageRoot, "app", "tools", "recovery", "bin"), "photorec_win.exe");
         using var otherApplication = StartWaitingProbe(differentRoot, "ShunshouToolbox.exe");
         try
         {
@@ -239,11 +347,13 @@ internal static class Program
             Assert(blockers.Any(p => p.ProcessId == legacyApplication.Id && !p.LocationUncertain), "Legacy Chinese application in the exact target directory is found.");
             Assert(blockers.Any(p => p.ProcessId == internalApplication.Id && !p.LocationUncertain), "Internal apphost in the exact target directory is found.");
             Assert(blockers.Any(p => p.ProcessId == tool.Id && !p.LocationUncertain), "A child engine process inside the target tools folder is found.");
+            Assert(blockers.Any(p => p.ProcessId == privateApplication.Id && !p.LocationUncertain), "Private apphost inside app is found even without its launcher.");
+            Assert(blockers.Any(p => p.ProcessId == privateTool.Id && !p.LocationUncertain), "Recovery engine inside app/tools is found.");
             Assert(!blockers.Any(p => p.ProcessId == otherApplication.Id), "Identically named application in another directory is not blocked.");
         }
         finally
         {
-            foreach (var process in new[] { application, legacyApplication, internalApplication, tool, otherApplication })
+            foreach (var process in new[] { application, legacyApplication, internalApplication, tool, privateApplication, privateTool, otherApplication })
             {
                 process.StandardInput.WriteLine("exit");
                 if (!process.WaitForExit(10000)) process.Kill(entireProcessTree: true);
@@ -282,10 +392,13 @@ internal static class Program
     {
         Directory.CreateDirectory(directory);
         var names = new List<string> { executableName, "Shunshou.App.dll" };
+        if (Version.Parse(version) >= new Version(0, 3, 0))
+            names = [executableName, "app/Shunshou.App.dll", "app/Shunshou.App.exe", "app/Shunshou.App.pri"];
         if (includeLegacyExecutable && executableName != PackageIdentity.LegacyExecutableName) names.Add(PackageIdentity.LegacyExecutableName);
         var files = names.Select(name =>
         {
             var bytes = System.Text.Encoding.UTF8.GetBytes("Non-executable package identity fixture: " + name);
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(directory, name))!);
             File.WriteAllBytes(Path.Combine(directory, name), bytes);
             return new { Path = name, Bytes = bytes.Length, Sha256 = Convert.ToHexString(SHA256.HashData(bytes)) };
         }).ToArray();
@@ -350,6 +463,34 @@ internal static class Program
             if (DenyWrite) throw new UnauthorizedAccessException("Fixture denied registration.");
             LastDirectory = directory;
             Writes++;
+        }
+    }
+
+    /// <summary>Stands in for HKCU\...\Run so the start-up logic is tested without writing the real registry.</summary>
+    private sealed class FixtureStartupStore : IStartupValueStore
+    {
+        public Dictionary<string, string> Values { get; } = new(StringComparer.Ordinal);
+        /// <summary>Simulates a locked-down registry key: every access is refused.</summary>
+        public bool DenyAccess { get; init; }
+
+        public string? Read(string name)
+        {
+            if (DenyAccess) throw new UnauthorizedAccessException("Fixture denied the start-up read.");
+            return Values.TryGetValue(name, out var value) ? value : null;
+        }
+
+        public bool Write(string name, string value)
+        {
+            if (DenyAccess) throw new UnauthorizedAccessException("Fixture denied the start-up write.");
+            Values[name] = value;
+            return true;
+        }
+
+        public bool Delete(string name)
+        {
+            if (DenyAccess) throw new UnauthorizedAccessException("Fixture denied the start-up delete.");
+            Values.Remove(name);
+            return true;
         }
     }
 }

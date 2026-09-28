@@ -1,0 +1,47 @@
+<UserControl x:Class="Shunshou.App.WebPdfWorkspace" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid RowSpacing="12">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <InfoBar x:Name="NoticeBar" IsOpen="False" IsClosable="True" Severity="Informational" Closed="Notice_Closed" Title="使用须知" Message="请尊重网页内容的版权；保存的 PDF 与提取的文字仅供个人学习使用，请勿传播或用于商业用途。"/>
+    <Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="18,14">
+      <StackPanel Spacing="10">
+        <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <TextBox x:Name="UrlBox" Header="网页链接" PlaceholderText="https://…" AutomationProperties.Name="要保存为 PDF 的网页链接" TextChanged="Url_Changed" KeyDown="Url_KeyDown"/>
+          <Button x:Name="LoadButton" Grid.Column="1" Content="加载网页" VerticalAlignment="Bottom" Click="Load_Click"/>
+        </Grid>
+        <TextBlock x:Name="ConnectionHint" Text="需联网加载网页 · PDF 保存在本机" Style="{StaticResource MutedTextStyle}"/>
+        <StackPanel x:Name="TextActions" Orientation="Horizontal" Spacing="10" Visibility="Collapsed">
+          <Button x:Name="ExtractTextButton" Content="提取正文" Click="ExtractText_Click" IsEnabled="False"/>
+          <Button x:Name="ShowPageButton" Content="网页预览" Click="ShowPage_Click"/>
+          <Button x:Name="OcrPageButton" Content="识别当前画面" Click="OcrPage_Click" IsEnabled="False"/>
+          <Button x:Name="CopyTextButton" Content="复制文字" Click="CopyText_Click" IsEnabled="False"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+    <Border Grid.Row="2" Background="{ThemeResource SurfaceBrush}" BorderBrush="{ThemeResource SurfaceStrokeBrush}" BorderThickness="1" CornerRadius="8" MinHeight="180">
+      <Grid x:Name="BrowserHost">
+        <StackPanel x:Name="EmptyPreview" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
+          <TextBlock Text="网页预览" FontSize="18" HorizontalAlignment="Center"/>
+          <TextBlock Text="加载后确认内容，再保存为 PDF" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" HorizontalAlignment="Center"/>
+          <HyperlinkButton x:Name="RuntimeLink" Content="安装 Microsoft WebView2 运行库" NavigateUri="https://developer.microsoft.com/microsoft-edge/webview2/" Visibility="Collapsed" HorizontalAlignment="Center"/>
+        </StackPanel>
+        <TextBox x:Name="TextEditor" AcceptsReturn="True" TextWrapping="Wrap" TextChanged="TextEditor_Changed" Visibility="Collapsed" AutomationProperties.Name="提取的可编辑正文" FontSize="16" Padding="18"/>
+      </Grid>
+    </Border>
+    <StackPanel Grid.Row="3" Spacing="8">
+      <InfoBar x:Name="MessageBar" IsOpen="False" IsClosable="True"/>
+      <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBox x:Name="OutputBox" Header="保存到" AutomationProperties.Name="网页 PDF 输出文件夹"/>
+        <Button x:Name="BrowseButton" Grid.Column="1" Content="浏览…" VerticalAlignment="Bottom" Click="Browse_Click"/>
+        <ComboBox x:Name="OrientationBox" Grid.Column="2" Header="A4 纸张" SelectedIndex="0" MinWidth="120"><ComboBoxItem Content="纵向"/><ComboBoxItem Content="横向"/></ComboBox>
+      </Grid>
+    </StackPanel>
+    <Border Grid.Row="4" Style="{StaticResource CardStyle}" Padding="18,12">
+      <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel Spacing="6" VerticalAlignment="Center"><TextBlock x:Name="StatusText" Text="准备就绪" Style="{StaticResource MutedTextStyle}" TextTrimming="CharacterEllipsis"/><ProgressBar x:Name="Progress" Height="3"/></StackPanel>
+        <Button x:Name="OpenButton" Grid.Column="1" Content="打开 PDF" IsEnabled="False" Click="Open_Click" VerticalAlignment="Center"/>
+        <Button x:Name="CancelButton" Grid.Column="2" Content="取消" IsEnabled="False" Click="Cancel_Click" VerticalAlignment="Center"/>
+        <Button x:Name="SaveButton" Grid.Column="3" Content="保存 PDF" Style="{StaticResource AccentButtonStyle}" Padding="22,9" IsEnabled="False" Click="Save_Click" VerticalAlignment="Center"/>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

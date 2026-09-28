@@ -1,0 +1,230 @@
+{
+  "Passed": true,
+  "CaptureExecuted": true,
+  "MicrophoneCaptured": false,
+  "CapturedContent": "Generated animation window, plus a production display crop fully inside that window.",
+  "Results": [
+    {
+      "Name": "validated-options",
+      "Plan": {
+        "Display": {
+          "DeviceName": "\\\\.\\DISPLAY1",
+          "DisplayName": "DELL P2419H",
+          "Bounds": {
+            "X": 0,
+            "Y": 0,
+            "Width": 1920,
+            "Height": 1080
+          },
+          "IsPrimary": true
+        },
+        "Region": {
+          "X": 0,
+          "Y": 0,
+          "Width": 640,
+          "Height": 360
+        },
+        "OutputWidth": 640,
+        "OutputHeight": 360,
+        "FrameRate": 30,
+        "VideoBitrate": 4000000,
+        "AudioBitrateKbps": 192
+      },
+      "OddPlan": {
+        "Display": {
+          "DeviceName": "\\\\.\\DISPLAY1",
+          "DisplayName": "DELL P2419H",
+          "Bounds": {
+            "X": 0,
+            "Y": 0,
+            "Width": 1920,
+            "Height": 1080
+          },
+          "IsPrimary": true
+        },
+        "Region": {
+          "X": 0,
+          "Y": 0,
+          "Width": 641,
+          "Height": 361
+        },
+        "OutputWidth": 640,
+        "OutputHeight": 360,
+        "FrameRate": 30,
+        "VideoBitrate": 2000000,
+        "AudioBitrateKbps": 192
+      },
+      "InvalidCases": 11,
+      "AcceptedFps": [
+        1,
+        15,
+        30,
+        60,
+        120
+      ]
+    },
+    {
+      "Name": "pre-cancelled-start",
+      "Passed": true
+    },
+    {
+      "Name": "window-pause-resume",
+      "Video": {
+        "Width": 960,
+        "Height": 800,
+        "FrameRate": 30,
+        "Duration": 3.8,
+        "Bitrate": 469378,
+        "AudioStreams": 0,
+        "Codec": "h264",
+        "Bytes": 222955,
+        "DistinctDecodedFrames": 19
+      },
+      "ActivePlan": {
+        "Display": {
+          "DeviceName": "fixture-window",
+          "DisplayName": "\u5F55\u5C4F\u6D4B\u8BD5\u7A97\u53E3",
+          "Bounds": {
+            "X": 16,
+            "Y": 16,
+            "Width": 960,
+            "Height": 800
+          },
+          "IsPrimary": true
+        },
+        "Region": {
+          "X": 0,
+          "Y": 0,
+          "Width": 960,
+          "Height": 800
+        },
+        "OutputWidth": 960,
+        "OutputHeight": 800,
+        "FrameRate": 30,
+        "VideoBitrate": 3686400,
+        "AudioBitrateKbps": 192
+      },
+      "WallSeconds": 7.2056914,
+      "States": [
+        "Starting",
+        "Starting",
+        "Starting",
+        "Starting",
+        "Recording",
+        "Recording",
+        "Recording",
+        "Recording",
+        "Recording",
+        "Recording",
+        "Recording",
+        "Recording",
+        "Paused",
+        "Paused",
+        "Paused",
+        "Paused",
+        "Paused",
+        "Paused",
+        "Paused",
+        "Paused",
+        "Paused",
+        "Paused",
+        "Recording",
+        "Recording",
+        "Recording",
+        "Recording",
+        "Recording",
+        "Recording",
+        "Recording",
+        "Recording",
+        "Stopping",
+        "Stopping",
+        "Completed"
+      ],
+      "Output": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\recording-v1.0.2\\20260919-232949-01dba8\\recordings\\Recording_20260919_232957.mp4"
+    },
+    {
+      "Name": "manual-bitrate-fps-size-no-overwrite",
+      "Video": {
+        "Width": 864,
+        "Height": 720,
+        "FrameRate": 15,
+        "Duration": 2.2666,
+        "Bitrate": 567320,
+        "AudioStreams": 0,
+        "Codec": "h264",
+        "Bytes": 160736,
+        "DistinctDecodedFrames": 11
+      },
+      "ActivePlan": {
+        "Display": {
+          "DeviceName": "fixture-window",
+          "DisplayName": "\u5F55\u5C4F\u6D4B\u8BD5\u7A97\u53E3",
+          "Bounds": {
+            "X": 16,
+            "Y": 16,
+            "Width": 960,
+            "Height": 800
+          },
+          "IsPrimary": true
+        },
+        "Region": {
+          "X": 0,
+          "Y": 0,
+          "Width": 960,
+          "Height": 800
+        },
+        "OutputWidth": 864,
+        "OutputHeight": 720,
+        "FrameRate": 15,
+        "VideoBitrate": 4000000,
+        "AudioBitrateKbps": 192
+      },
+      "Output": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\recording-v1.0.2\\20260919-232949-01dba8\\recordings\\Recording_20260919_233001.mp4"
+    },
+    {
+      "Name": "production-display-crop",
+      "Video": {
+        "Width": 640,
+        "Height": 360,
+        "FrameRate": 30,
+        "Duration": 2.266633,
+        "Bitrate": 144577,
+        "AudioStreams": 0,
+        "Codec": "h264",
+        "Bytes": 40963,
+        "DistinctDecodedFrames": 11
+      },
+      "ActivePlan": {
+        "Display": {
+          "DeviceName": "\\\\.\\DISPLAY1",
+          "DisplayName": "DELL P2419H",
+          "Bounds": {
+            "X": 0,
+            "Y": 0,
+            "Width": 1920,
+            "Height": 1080
+          },
+          "IsPrimary": true
+        },
+        "Region": {
+          "X": 40,
+          "Y": 156,
+          "Width": 640,
+          "Height": 360
+        },
+        "OutputWidth": 640,
+        "OutputHeight": 360,
+        "FrameRate": 30,
+        "VideoBitrate": 2000000,
+        "AudioBitrateKbps": 192
+      },
+      "Output": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\artifacts\\recording-v1.0.2\\20260919-232949-01dba8\\recordings\\Recording_20260919_233005.mp4"
+    }
+  ],
+  "Uncovered": [
+    "Real microphone capture is deliberately not exercised.",
+    "Multi-monitor/DPI combinations, first-time permissions, protected content, long recordings, and all GPU/driver combinations are not covered.",
+    "System loopback audio was not exercised; use --audio to opt into a generated test tone."
+  ],
+  "Error": null
+}

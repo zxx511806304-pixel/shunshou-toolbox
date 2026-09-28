@@ -44,6 +44,14 @@ foreach ($key in ($assets.libraries.Keys | Sort-Object)) {
         if (-not (Test-Path -LiteralPath $original)) { throw "Declared license file is missing in $key" }
         Copy-Item -LiteralPath $original -Destination (Join-Path $packageDestination ('DECLARED-' + [IO.Path]::GetFileName($original)))
     }
+    elseif ($key -in @('DiscUtils.Core/0.16.13','DiscUtils.Ntfs/0.16.13','DiscUtils.Streams/0.16.13')) {
+        # These NuGet packages declare MIT but omit its copyright text. Preserve the
+        # upstream license from the exact source commit recorded in each nuspec.
+        if ($licenseText -ne 'MIT' -or $repositoryNode.GetAttribute('commit') -ne '59d7cadab839c6d8dfcf52f8be5efe6d2ced190f') {
+            throw "DiscUtils license snapshot needs to be reviewed for $key"
+        }
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'licenses/DiscUtils-0.16.13.txt') -Destination (Join-Path $packageDestination 'LICENSE-UPSTREAM.txt')
+    }
     elseif ($licenseType -eq 'expression' -and $licenseText -in @('MIT','Apache-2.0')) {
         if ($licenseText -eq 'MIT' -and $copyrightNode) {
             $text = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'licenses/MIT.txt')).Replace('Copyright (c) <year> <copyright holders>', $copyrightNode.InnerText)

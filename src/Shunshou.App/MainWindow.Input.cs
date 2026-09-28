@@ -17,9 +17,16 @@ public sealed partial class MainWindow
         "按上传上限压缩" => InputTool.TargetZip,
         "无损 ZIP 打包" => InputTool.CreateZip,
         "ZIP 解压" => InputTool.ExtractZip,
+        "解压 7z / RAR" => InputTool.Archive,
+        "解压压缩包" => InputTool.Archive,
         "合并 PDF" => InputTool.MergePdf,
         "图片格式转换" => InputTool.ImageConvert,
+        "图片裁剪" => InputTool.CropImage,
         "图片提取文字" => InputTool.Ocr,
+        "音视频格式转换" => InputTool.Media,
+        "按目标大小压缩" => InputTool.Media,
+        "截取音视频片段" => InputTool.TrimMedia,
+        "提取音轨" => InputTool.ExtractAudio,
         "按名称搜索" => InputTool.Search,
         "批量重命名" => InputTool.Rename,
         "撤销重命名" => InputTool.UndoRename,
@@ -66,7 +73,24 @@ public sealed partial class MainWindow
 
     private bool AcceptInputPaths(IEnumerable<string> paths)
     {
-        if (_category == "software" || OcrEditor.IsBusy) return false;
+        if (_category is "software" or "shop" or "system" or "office" || OcrEditor.IsBusy) return false;
+        if (IsUrlOperation || Operation is "屏幕录制" or "特殊字符库" or "文本对比" or "二维码") return false;
+        if (Operation == "视频水印处理")
+        {
+            if (_busy) return false;
+            var files = paths.ToArray();
+            if (files.Length != 1 || !File.Exists(files[0])) { ShowError("一次添加一个本地视频文件。"); return false; }
+            _ = VideoTools.SetInputAsync(files[0]);
+            return true;
+        }
+        if (Operation == "误删恢复")
+        {
+            if (_busy) return false;
+            var input = paths.ToArray();
+            if (input.Length != 1) { ShowError("一次选择一个磁盘镜像或备份文件夹。"); return false; }
+            try { Recovery.SelectSource(input[0]); return true; }
+            catch (Exception ex) { ShowError(ex.Message); return false; }
+        }
         var result = InputSelectionPolicy.Select(CurrentInputTool, _inputs, paths, _busy);
         if (result.Applied)
         {
@@ -104,7 +128,7 @@ public sealed partial class MainWindow
 
     private void Window_DragOver(object sender, DragEventArgs args)
     {
-        bool canReceive = _category != "software" && !OcrEditor.IsBusy && !_busy && !_receivingDrop && args.DataView.Contains(StandardDataFormats.StorageItems);
+        bool canReceive = _category is not "software" and not "shop" and not "text" and not "system" and not "office" && !IsUrlOperation && Operation != "屏幕录制" && !OcrEditor.IsBusy && !_busy && !_receivingDrop && args.DataView.Contains(StandardDataFormats.StorageItems);
         args.AcceptedOperation = canReceive ? DataPackageOperation.Copy : DataPackageOperation.None;
         args.Handled = true;
         if (canReceive)

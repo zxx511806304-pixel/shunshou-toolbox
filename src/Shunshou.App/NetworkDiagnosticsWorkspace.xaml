@@ -1,0 +1,38 @@
+<UserControl x:Class="Shunshou.App.NetworkDiagnosticsWorkspace" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid RowSpacing="12">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <Border Style="{StaticResource CardStyle}" Padding="18,14">
+      <StackPanel Spacing="10">
+        <TextBlock Text="网络诊断" FontSize="16" FontWeight="SemiBold"/>
+        <TextBlock Text="诊断只读取本机网络状态，不会修改系统设置。重置网络前会请求管理员授权，并在完成后提示重启电脑。" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Button x:Name="RunButton" Content="开始诊断" Style="{StaticResource AccentButtonStyle}" Click="Run_Click" Padding="20,8" AutomationProperties.Name="开始网络诊断"/>
+          <TextBlock x:Name="ProgressText" Style="{StaticResource MutedTextStyle}" VerticalAlignment="Center"/>
+        </StackPanel>
+        <InfoBar x:Name="Notice" IsOpen="False" IsClosable="True" Severity="Warning"/>
+      </StackPanel>
+    </Border>
+    <Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="18,14">
+      <Grid RowSpacing="12">
+        <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <ListView x:Name="ResultList" SelectionMode="None" AutomationProperties.Name="网络诊断结果列表">
+          <ListView.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnSpacing="10" Padding="4,4">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <FontIcon x:Name="StatusIcon" Glyph="{Binding Glyph}" Foreground="{Binding Color}" FontSize="14" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" MinWidth="140" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="{Binding Detail}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+              </Grid>
+            </DataTemplate>
+          </ListView.ItemTemplate>
+        </ListView>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10">
+          <Button x:Name="FlushDnsButton" Content="清理 DNS 缓存" Click="FlushDns_Click" AutomationProperties.Name="清理 DNS 缓存"/>
+          <Button x:Name="ResetButton" Content="重置网络（需管理员，需重启生效）" Click="Reset_Click" AutomationProperties.Name="重置网络，需要管理员权限"/>
+          <Button x:Name="ExportButton" Content="导出诊断报告" Click="Export_Click" IsEnabled="False" AutomationProperties.Name="导出诊断报告为文本文件"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

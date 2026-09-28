@@ -1,0 +1,79 @@
+<UserControl x:Class="Shunshou.App.VideoWorkspace" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="using:Shunshou.App">
+  <Grid RowSpacing="12">
+    <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Spacing="14" Padding="0,0,4,4">
+        <InfoBar x:Name="NoticeBar" IsOpen="False" IsClosable="True" Severity="Informational" Closed="Notice_Closed" Title="使用须知" Message="请只下载或处理你拥有权利或已获授权的内容；下载与处理结果仅供个人学习使用，请勿传播或用于商业用途。"/>
+        <Border x:Name="DownloadArea" Style="{StaticResource CardStyle}">
+          <StackPanel Spacing="16">
+            <TextBlock Text="粘贴视频链接" FontSize="17"/>
+            <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <TextBox x:Name="UrlBox" PlaceholderText="https://…" AutomationProperties.Name="视频网页链接" TextChanged="Url_Changed"/>
+              <Button x:Name="AnalyzeButton" Grid.Column="1" Content="解析链接" Click="Analyze_Click"/>
+            </Grid>
+            <TextBlock x:Name="VideoTitle" Text="支持公开视频链接" TextWrapping="Wrap"/>
+            <TextBlock x:Name="VideoDetail" Text="下载后可继续转换格式、压缩或处理水印。" Style="{StaticResource MutedTextStyle}"/>
+            <StackPanel Orientation="Horizontal" Spacing="14">
+              <ComboBox x:Name="QualityBox" Header="下载画质" MinWidth="220" IsEnabled="False"/>
+              <Button x:Name="BrowserAssistButton" Content="网页辅助" VerticalAlignment="Bottom" Click="BrowserAssist_Click"/>
+            </StackPanel>
+            <TextBlock Text="输出兼容 MP4；部分网站需通过网页辅助登录或打开完整分享链接。" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+        <Border x:Name="WatermarkArea" Style="{StaticResource CardStyle}" Visibility="Collapsed">
+          <StackPanel Spacing="12">
+            <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <ComboBox x:Name="EngineBox" Header="处理引擎" HorizontalAlignment="Stretch" SelectionChanged="Engine_Changed"><ComboBoxItem Content="常规处理"/><ComboBoxItem Content="轻量 AI 修补"/><ComboBoxItem Content="深度 AI 修补"/></ComboBox>
+              <ComboBox x:Name="ProviderBox" Grid.Column="1" Header="运行设备" HorizontalAlignment="Stretch" Visibility="Collapsed"><ComboBoxItem Content="自动选择"/><ComboBoxItem Content="CPU"/><ComboBoxItem Content="显卡加速"/></ComboBox>
+            </Grid>
+            <TextBlock x:Name="EngineHint" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"/>
+            <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <TextBlock x:Name="InputName" Text="拖入视频，或选择本地文件" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+              <Button x:Name="PickVideoButton" Grid.Column="1" Content="选择视频" Click="PickVideo_Click"/>
+            </Grid>
+            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <Button x:Name="DetectButton" Content="自动识别水印" Click="Detect_Click" IsEnabled="False"/>
+              <ComboBox x:Name="CandidateBox" Grid.Column="1" PlaceholderText="识别后选择候选区域，也可在画面中调整" HorizontalAlignment="Stretch" SelectionChanged="Candidate_Changed"/>
+            </Grid>
+            <Grid x:Name="PreviewHost" Height="220" Background="{ThemeResource WorkspaceBrush}" CornerRadius="6">
+              <TextBlock x:Name="EmptyPreview" Text="选择视频后自动识别，也可手动调整选区" Foreground="{ThemeResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              <Viewbox x:Name="FrameView" Stretch="Uniform" Visibility="Collapsed">
+                <Canvas x:Name="SelectionCanvas" Background="Transparent" PointerPressed="Region_Pressed" PointerMoved="Region_Moved" PointerReleased="Region_Released" PointerCaptureLost="Region_CaptureLost">
+                  <Image x:Name="FrameImage" IsHitTestVisible="False"/>
+                  <Canvas x:Name="CandidateLayer" IsHitTestVisible="False"/>
+                  <Border x:Name="SelectionBorder" BorderBrush="{ThemeResource BrandBrush}" BorderThickness="5" Background="#18000000" IsHitTestVisible="False"/>
+                </Canvas>
+              </Viewbox>
+              <MediaPlayerElement x:Name="PreviewPlayer" AreTransportControlsEnabled="True" AutoPlay="False" Visibility="Collapsed"/>
+            </Grid>
+            <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <ComboBox x:Name="ModeBox" Header="处理方式" MinWidth="180" SelectionChanged="Mode_Changed"><ComboBoxItem Content="模糊遮盖"/><ComboBoxItem Content="纯色遮盖"/><ComboBoxItem Content="裁剪保留区域"/><ComboBoxItem Content="邻域修补"/></ComboBox>
+              <Button x:Name="EditRegionButton" Grid.Column="1" Content="调整选区" VerticalAlignment="Bottom" Click="EditRegion_Click" IsEnabled="False"/>
+              <Button x:Name="PreviewButton" Grid.Column="2" Content="预览 3 秒" VerticalAlignment="Bottom" Click="Preview_Click" IsEnabled="False"/>
+            </Grid>
+            <TextBlock x:Name="ModeHint" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"/>
+            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <NumberBox x:Name="RegionX" Header="左侧 X" Value="0" Minimum="0" SpinButtonPlacementMode="Compact" ValueChanged="Region_Changed"/>
+              <NumberBox x:Name="RegionY" Grid.Column="1" Header="顶部 Y" Value="0" Minimum="0" SpinButtonPlacementMode="Compact" ValueChanged="Region_Changed"/>
+              <NumberBox x:Name="RegionWidth" Grid.Column="2" Header="宽度" Value="2" Minimum="2" SpinButtonPlacementMode="Compact" ValueChanged="Region_Changed"/>
+              <NumberBox x:Name="RegionHeight" Grid.Column="3" Header="高度" Value="2" Minimum="2" SpinButtonPlacementMode="Compact" ValueChanged="Region_Changed"/>
+            </Grid>
+          </StackPanel>
+        </Border>
+        <Border Style="{StaticResource CardStyle}"><Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <TextBox x:Name="OutputBox" Header="保存到" AutomationProperties.Name="视频输出文件夹"/>
+          <Button x:Name="OutputBrowseButton" Grid.Column="1" Content="浏览…" VerticalAlignment="Bottom" Click="Browse_Click"/>
+        </Grid></Border>
+        <InfoBar x:Name="MessageBar" IsOpen="False" IsClosable="True"/>
+      </StackPanel>
+    </ScrollViewer>
+    <Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="18,12" Margin="0,0,4,0">
+      <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel Spacing="6" VerticalAlignment="Center"><TextBlock x:Name="StatusText" Text="准备就绪" Style="{StaticResource MutedTextStyle}" TextTrimming="CharacterEllipsis"/><ProgressBar x:Name="Progress" Height="3"/></StackPanel>
+        <Button x:Name="OpenButton" Grid.Column="1" Content="打开输出" IsEnabled="False" Click="Open_Click" VerticalAlignment="Center"/>
+        <Button x:Name="CancelButton" Grid.Column="2" Content="取消" IsEnabled="False" Click="Cancel_Click" VerticalAlignment="Center"/>
+        <Button x:Name="StartButton" Grid.Column="3" Content="开始下载" Style="{StaticResource AccentButtonStyle}" Padding="22,9" IsEnabled="False" Click="Start_Click" VerticalAlignment="Center"/>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

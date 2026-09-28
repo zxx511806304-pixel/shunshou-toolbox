@@ -1,0 +1,16 @@
+{
+  "Version": "0.6.0",
+  "Commit": "04fd32f72b448c12b02ba6c40928b67e510bac49",
+  "Files": [
+    {
+      "File": "Readability.js",
+      "Url": "https://raw.githubusercontent.com/mozilla/readability/0.6.0/Readability.js",
+      "Sha256": "34dcab3d0832d0019f02990eed6b6124e029e8c32b9f0c6f2550544ff8dff174"
+    },
+    {
+      "File": "LICENSE.md",
+      "Url": "https://raw.githubusercontent.com/mozilla/readability/0.6.0/LICENSE.md",
+      "Sha256": "a5b1e8181751ce05b85b7bfaa832b785e87086250a5148e679d17ca9bdcfa958"
+    }
+  ]
+}

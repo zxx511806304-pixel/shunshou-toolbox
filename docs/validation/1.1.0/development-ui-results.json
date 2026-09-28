@@ -1,0 +1,168 @@
+{
+  "Passed": true,
+  "Version": "1.1.0",
+  "Checks": [
+    "\u5B57\u7B26\u5E93\uFF1A\u968F\u5305 22 \u7EC4 557 \u4E2A\u5B57\u7B26\u5168\u90E8\u6E32\u67D3\u5230\u754C\u9762",
+    "\u5B57\u7B26\u5E93\uFF1A\u70B9\u51FB \u2713 \u771F\u5B9E\u5199\u5165\u526A\u8D34\u677F\uFF0C\u5E76\u663E\u793A\u540D\u79F0\u4E0E U\u002B2713 \u7F16\u7801",
+    "\u5B57\u7B26\u5E93\uFF1A\u8FDE\u7EED\u70B9\u51FB\u4E0D\u540C\u5B57\u7B26\u65F6\u526A\u8D34\u677F\u8DDF\u968F\u6700\u540E\u4E00\u6B21\u70B9\u51FB",
+    "\u5B57\u7B26\u5E93\uFF1A\u6309\u540D\u79F0\u3001\u7EC4\u540D\u4E0E U\u002B \u7F16\u7801\u67E5\u627E\uFF0C\u7A7A\u7ED3\u679C\u4E0E\u201C\u663E\u793A\u5168\u90E8\u201D\u90FD\u6B63\u5E38",
+    "\u5B57\u7B26\u5E93\uFF1A\u7A97\u53E3\u5BBD\u5EA6\u53D8\u5316\u540E\u81EA\u52A8\u91CD\u6392\uFF0810 \u2192 15 \u5217\uFF09",
+    "\u5B57\u7B26\u5E93\uFF1A\u6D45\u8272 / \u6DF1\u8272 / \u56DE\u5230\u6D45\u8272\u7684\u5B9E\u9645\u6E32\u67D3\u622A\u56FE",
+    "\u5F00\u673A\u81EA\u542F\u52A8\uFF1A\u5DE6\u4FA7\u5F00\u5173\u771F\u5B9E\u5199\u5165\u5F53\u524D\u7528\u6237\u542F\u52A8\u9879\uFF08\u542B --startup \u53C2\u6570\uFF09\uFF0C\u5173\u95ED\u540E\u4E0D\u6B8B\u7559\u5E76\u6062\u590D\u539F\u72B6\u6001",
+    "\u94FE\u63A5\u63D0\u53D6\u6587\u5B57\uFF1A\u672C\u5730\u6837\u4F8B\u9875\u63D0\u53D6\u6BB5\u843D\u3001\u6392\u9664\u9690\u85CF\u6587\u672C\u3001\u5199\u5165 TXT \u5E76\u5E26\u4E0A\u6765\u6E90",
+    "\u94FE\u63A5\u63D0\u53D6\u6587\u5B57\uFF1A\u771F\u5B9E\u7F51\u7AD9\u62BD\u67E5 10 \u4E2A\uFF08\u7ED3\u679C\u89C1 live-sites.json\uFF09"
+  ],
+  "Details": {
+    "CharacterLibrary": {
+      "Groups": 22,
+      "Characters": 557,
+      "Summary": "\u663E\u793A 22 \u7EC4 \u00B7 557 \u4E2A\u5B57\u7B26\uFF1B\u5B57\u7B26\u5E93\u5171 22 \u7EC4 \u00B7 557 \u4E2A\u5B57\u7B26\u3002"
+    },
+    "CharacterSearch": {
+      "ByGroup": "\u7BAD\u5934",
+      "ByCodePoint": "2713",
+      "Empty": true
+    },
+    "CharacterLayout": {
+      "Narrow": 10,
+      "Restored": 15
+    },
+    "Startup": {
+      "Written": "\u0022C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\src\\Shunshou.App\\bin\\x64\\Release\\net10.0-windows10.0.26100.0\\win-x64\\Shunshou.App.exe\u0022 --startup",
+      "MenuChecked": true,
+      "RemovedAfterDisable": true,
+      "RestoredTo": "\u672A\u5F00\u542F\uFF08\u539F\u72B6\u6001\uFF09",
+      "Launcher": "C:\\Users\\zhangqq\\Documents\\ChatGPT\\app\\src\\Shunshou.App\\bin\\x64\\Release\\net10.0-windows10.0.26100.0\\win-x64\\Shunshou.App.exe"
+    },
+    "LinkText": {
+      "Passed": true,
+      "Paragraphs": 9,
+      "Chars": 550,
+      "HiddenContentExcluded": true,
+      "PrivateGlyphRejected": true,
+      "SourceIncluded": true,
+      "NoOverwrite": true
+    },
+    "OnlineSites": [
+      {
+        "Site": "\u8D77\u70B9\u4E2D\u6587\u7F51 \u7AE0\u8282",
+        "Result": {
+          "Url": "https://read.qidian.com/chapter/Au5GVOXnwfgKgXB091LLaA2/H3PXyQ_JM0iaGfXRMrUjdw2/",
+          "Extracted": true,
+          "Title": "\u5FD8\u5F52\u6865\u4E0A_\u7B2C1\u7AE0 \u9752\u5C71\u884C\u5728\u7EBF\u514D\u8D39\u9605\u8BFB-\u8D77\u70B9\u4E2D\u6587\u7F51",
+          "Characters": 2943,
+          "Paragraphs": 46,
+          "Method": "\u6B63\u6587\u533A\u57DF",
+          "Warning": "",
+          "Seconds": 4.3051223
+        }
+      },
+      {
+        "Site": "\u756A\u8304\u5C0F\u8BF4 \u7AE0\u8282",
+        "Result": {
+          "Url": "https://fanqienovel.com/reader/7218823885725598265",
+          "Extracted": false,
+          "Reason": "\u7F51\u9875\u4F7F\u7528\u4E86\u7279\u6B8A\u5B57\u5F62\uFF0C\u76F4\u63A5\u590D\u5236\u4F1A\u4E71\u7801\u3002\u8BF7\u5207\u6362\u7F51\u9875\u9884\u89C8\uFF0C\u7528\u201C\u8BC6\u522B\u5F53\u524D\u753B\u9762\u201D\u63D0\u53D6\u5F53\u524D\u53EF\u89C1\u6587\u5B57\u3002",
+          "Seconds": 5.3162225
+        }
+      },
+      {
+        "Site": "\u664B\u6C5F\u6587\u5B66\u57CE \u7AE0\u8282",
+        "Result": {
+          "Url": "https://www.jjwxc.net/onebook.php?chapterid=1\u0026novelid=524475",
+          "Extracted": true,
+          "Title": "\u300A\u51B7\u7D6E\u67F3\u60C5\u300B\u51CC\u6CE2\u5FAE\u6B65\u7B11\u50B2\u6C5F\u6E56\u3000^\u7B2C1\u7AE0^ \u6700\u65B0\u66F4\u65B0:2018-08-16 11:54:27 \u664B\u6C5F\u6587\u5B66\u57CE",
+          "Characters": 983,
+          "Paragraphs": 29,
+          "Method": "\u6B63\u6587\u533A\u57DF",
+          "Warning": "",
+          "Seconds": 5.1547338
+        }
+      },
+      {
+        "Site": "\u7EB5\u6A2A\u5C0F\u8BF4 \u7AE0\u8282",
+        "Result": {
+          "Url": "https://read.zongheng.com/chapter/777234/43415281.html",
+          "Extracted": true,
+          "Title": "\u7B2C\u4E00\u7AE0\uFF1A\u8C01\u6562\u52A8\u6211\u59B9\uFF01_\u4E00\u5251\u72EC\u5C0A\u5C0F\u8BF4\u6700\u65B0\u7AE0\u8282,\u5728\u7EBF\u9605\u8BFB,\u7EB5\u6A2A\u5C0F\u8BF4",
+          "Characters": 5418,
+          "Paragraphs": 149,
+          "Method": "\u6B63\u6587\u533A\u57DF",
+          "Warning": "",
+          "Seconds": 5.2561554
+        }
+      },
+      {
+        "Site": "17K \u5C0F\u8BF4 \u7AE0\u8282",
+        "Result": {
+          "Url": "https://www.17k.com/chapter/3556430/48022819.html",
+          "Extracted": true,
+          "Title": "\u7B2C\u4E00\u7AE0 \u7B51\u57FA\u4E24\u5343\u5E74_\u7B51\u57FA\u4E24\u5343\u5E74\uFF0C\u8001\u5E08\u8BF4\u6211\u662F\u5E9F\u7269\uFF1F_\u897F\u5B50\u6E56\u9F99\u4E95-17K\u5C0F\u8BF4\u7F51",
+          "Characters": 3207,
+          "Paragraphs": 121,
+          "Method": "Mozilla Readability",
+          "Warning": "",
+          "Seconds": 3.8269943
+        }
+      },
+      {
+        "Site": "\u5C11\u6570\u6D3E \u6587\u7AE0",
+        "Result": {
+          "Url": "https://sspai.com/post/41077",
+          "Extracted": true,
+          "Title": "\u6BCF\u4E2A\u4EBA\u90FD\u5E94\u8BE5\u5B66\u4F1A\u6B63\u786E\u5730\u7BA1\u7406\u6587\u4EF6 - \u5C11\u6570\u6D3E",
+          "Characters": 1929,
+          "Paragraphs": 70,
+          "Method": "\u6B63\u6587\u533A\u57DF",
+          "Warning": "",
+          "Seconds": 4.6773024
+        }
+      },
+      {
+        "Site": "\u962E\u4E00\u5CF0 \u535A\u5BA2\u6587\u7AE0",
+        "Result": {
+          "Url": "https://www.ruanyifeng.com/blog/2014/06/git_remote.html",
+          "Extracted": true,
+          "Title": "Git\u8FDC\u7A0B\u64CD\u4F5C\u8BE6\u89E3 - \u962E\u4E00\u5CF0\u7684\u7F51\u7EDC\u65E5\u5FD7",
+          "Characters": 14583,
+          "Paragraphs": 544,
+          "Method": "\u6B63\u6587\u533A\u57DF",
+          "Warning": "",
+          "Seconds": 5.2063979
+        }
+      },
+      {
+        "Site": "MDN \u6587\u6863",
+        "Result": {
+          "Url": "https://developer.mozilla.org/zh-CN/docs/Web/API/Clipboard",
+          "Extracted": true,
+          "Title": "Clipboard - Web API | MDN",
+          "Characters": 965,
+          "Paragraphs": 36,
+          "Method": "\u6B63\u6587\u533A\u57DF",
+          "Warning": "",
+          "Seconds": 4.3976685
+        }
+      },
+      {
+        "Site": "\u6296\u97F3 \u89C6\u9891\u9875",
+        "Result": {
+          "Url": "https://www.douyin.com/video/6961737553342991651",
+          "Loaded": true,
+          "BrowserPage": "{\u0022title\u0022:\u0022#\u6768\u8D85\u8D8A \u5C0F\u5C0F\u6C34\u624B\u5E26\u4F60\u53BB\u8FDC\u822A\u2764\uFE0F - \u6296\u97F3\u0022,\u0022video\u0022:true,\u0022direct\u0022:false,\u0022login\u0022:true,\u0022chars\u0022:1048}",
+          "Seconds": 3.9611406
+        }
+      },
+      {
+        "Site": "\u5C0F\u7EA2\u4E66 \u7B14\u8BB0",
+        "Result": {
+          "Url": "https://www.xiaohongshu.com/explore/6411cf99000000001300b6d9",
+          "Extracted": false,
+          "Reason": "\u7F51\u9875\u52A0\u8F7D\u5931\u8D25\uFF08ConnectionAborted\uFF09\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC\u540E\u91CD\u8BD5\u3002",
+          "Seconds": 1.990051
+        }
+      }
+    ]
+  },
+  "NotCovered": "Clean Windows 10/11 machine, High Contrast rendering, and websites that need an account or paid access."
+}

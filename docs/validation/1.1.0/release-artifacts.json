@@ -1,0 +1,24 @@
+{
+  "Version": "1.1.0",
+  "BuiltUtc": "2026-09-21T05:16:12.4361855Z",
+  "Files": [
+    {
+      "Name": "ShunshouToolbox-1.1.0-win-x64.zip",
+      "Bytes": 401820827,
+      "Sha256": "28048b40bb3f74ad7d41442d47f15589d05dabb5f0ca44eaf6c81fb4859cd7df"
+    },
+    {
+      "Name": "ShunshouToolbox-1.1.0-win-x64-setup.exe",
+      "Bytes": 453737926,
+      "Sha256": "cd5c979849b717f4aaf170247a102da56b6f89a3fbb8362f48cd98edd719c67b"
+    },
+    {
+      "Name": "RecoverySources-1.1.0.zip",
+      "Bytes": 126936468,
+      "Sha256": "0e29ab759036b6dd93ba21028ae51f5f2aa1498612ffa2848e88db8069df78f1"
+    }
+  ],
+  "ManifestFiles": 1253,
+  "PackageSha256Verified": true,
+  "SetupExtractionVerified": true
+}

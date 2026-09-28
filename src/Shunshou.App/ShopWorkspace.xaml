@@ -1,0 +1,28 @@
+<UserControl x:Class="Shunshou.App.ShopWorkspace" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="using:Shunshou.App" SizeChanged="Workspace_SizeChanged">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="16" Padding="0,0,0,8">
+      <Grid x:Name="StoreCards" ColumnSpacing="16" RowSpacing="16">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Border Style="{StaticResource CardStyle}" Padding="24">
+          <StackPanel Spacing="16">
+            <local:ToolIcon Kind="sim" Width="28" Height="28" HorizontalAlignment="Left" Foreground="{ThemeResource TextBrush}"/>
+            <TextBlock Text="手机卡与宽带" FontSize="20" FontWeight="Medium" TextWrapping="Wrap"/>
+            <TextBlock Text="流量套餐 · 通话套餐&#x0a;宽带办理" Style="{StaticResource MutedTextStyle}"/>
+            <Button x:Name="SimStoreButton" Click="SimStore_Click" IsEnabled="False" Padding="14,10" AutomationProperties.Name="浏览手机卡与宽带套餐"><StackPanel Orientation="Horizontal" Spacing="9"><TextBlock Text="浏览套餐"/><local:ToolIcon Kind="external" Width="14" Height="14" Foreground="{ThemeResource TextBrush}"/></StackPanel></Button>
+          </StackPanel>
+        </Border>
+        <Border x:Name="MembershipCard" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="24">
+          <StackPanel Spacing="16">
+            <local:ToolIcon Kind="coupon" Width="28" Height="28" HorizontalAlignment="Left" Foreground="{ThemeResource TextBrush}"/>
+            <TextBlock Text="会员与生活优惠" FontSize="20" FontWeight="Medium" TextWrapping="Wrap"/>
+            <TextBlock Text="影音 · 办公设计 · 网盘&#x0a;餐饮与外卖优惠" Style="{StaticResource MutedTextStyle}"/>
+            <Button x:Name="MembershipStoreButton" Click="MembershipStore_Click" IsEnabled="False" Padding="14,10" AutomationProperties.Name="浏览会员与生活优惠"><StackPanel Orientation="Horizontal" Spacing="9"><TextBlock Text="浏览会员与优惠"/><local:ToolIcon Kind="external" Width="14" Height="14" Foreground="{ThemeResource TextBrush}"/></StackPanel></Button>
+          </StackPanel>
+        </Border>
+      </Grid>
+      <Button x:Name="QrButton" HorizontalAlignment="Right" Height="40" Padding="12,8" IsEnabled="False" Click="Qr_Click" AutomationProperties.Name="联系客服，查看微信二维码"><StackPanel Orientation="Horizontal" Spacing="8"><local:ToolIcon Kind="headset" Width="18" Height="18" Foreground="{ThemeResource TextBrush}"/><TextBlock Text="联系客服" VerticalAlignment="Center"/></StackPanel></Button>
+      <InfoBar x:Name="ShopError" IsOpen="False" IsClosable="True" Severity="Error"/>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

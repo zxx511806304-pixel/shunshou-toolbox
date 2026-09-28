@@ -71,14 +71,17 @@ public sealed partial class MainWindow
             await SaveScreenshot(Path.Combine(output, "ocr-dark.png"));
             RootLayout.RequestedTheme = ElementTheme.Light;
 
-            Navigation.SelectedItem = Navigation.MenuItems[4];
+            Navigation.SelectedItem = Navigation.MenuItems[5];
             SelectCategory("files");
+            await RefreshSearchIndexAsync();
+            RequireUi(_searchIndexConnected, "This UI fixture requires an existing Everything index; core traversal has separate tests.");
             RequireUi(SearchScopeBox.SelectedItem is SearchScope { Root: null, IsFolder: false }, "Default search scope is not all local drives");
             RequireUi(AcceptInputPaths([landscape]) && SearchQuery.Text == Path.GetFileName(landscape)
                 && _selectedSearchFolder == source, "File input did not choose its containing search folder and name");
             RequireUi(AcceptInputPaths([source]), "Folder input was rejected for search");
             SearchQuery.Text = "资料";
             ImagesOnly.IsChecked = false;
+            await WaitForIndexedFixtureAsync(source, "资料", 5);
             await RunSearchAsync();
             RequireUi(_searchRows.Count == 5 && !_busy && !TaskProgress.IsIndeterminate, "Search results or final UI state are incorrect");
             SearchResults.UpdateLayout();
@@ -114,6 +117,7 @@ public sealed partial class MainWindow
             Directory.CreateDirectory(scrollFixtures);
             for (var i = 0; i < 160; i++) File.Copy(landscape, Path.Combine(scrollFixtures, $"滚动-{i:D3}.png"), true);
             SelectSearchFolder(scrollFixtures, "滚动");
+            await WaitForIndexedFixtureAsync(scrollFixtures, "滚动", 160);
             await RunSearchAsync();
             RequireUi(_searchRows.Count == 160, "Scroll fixture count is incorrect");
             foreach (int index in new[] { 0, 40, 80, 120, 159 })
@@ -126,7 +130,20 @@ public sealed partial class MainWindow
             }
             checks.Add("160-image virtualized list: scrolling releases offscreen decoded thumbnails and recycled rows load correct previews");
             RootLayout.RequestedTheme = ElementTheme.Light;
-            Navigation.SelectedItem = Navigation.MenuItems[5];
+            string recoveryInput = Path.Combine(output, "recovery-fixtures");
+            Directory.CreateDirectory(recoveryInput);
+            File.Copy(landscape, Path.Combine(recoveryInput, "恢复图片.png"), true);
+            await File.WriteAllTextAsync(Path.Combine(recoveryInput, "恢复文字.txt"), "Generated recovery fixture only.");
+            OperationBox.SelectedIndex = 1;
+            RequireUi(Recovery.Visibility == Visibility.Visible && RunFooter.Visibility == Visibility.Collapsed, "Recovery workspace did not replace general controls");
+            await Recovery.VerifyFixtureAsync(recoveryInput, Path.Combine(output, "recovery-output"));
+            await SaveScreenshot(Path.Combine(output, "recovery.png"));
+            RootLayout.RequestedTheme = ElementTheme.Dark;
+            await Task.Delay(200);
+            await SaveScreenshot(Path.Combine(output, "recovery-dark.png"));
+            checks.Add("Recovery workspace: generated local backup scan, Chinese name and extension filters, real image preview, selected copy preserves originals; no real disk scanned");
+            RootLayout.RequestedTheme = ElementTheme.Light;
+            Navigation.SelectedItem = Navigation.MenuItems[6];
             await Uninstaller.LoadAsync();
             await Uninstaller.VerifyFixtureAsync(Path.Combine(output, "software-fixtures"));
             await Task.Delay(200);
@@ -141,6 +158,7 @@ public sealed partial class MainWindow
         }
         catch (Exception ex)
         {
+            try { await SaveScreenshot(Path.Combine(output, "failure.png")); } catch { }
             await File.WriteAllTextAsync(Path.Combine(output, "ui-verification.json"), JsonSerializer.Serialize(new
                 { Passed = false, Checks = checks, Error = ex.ToString() }, new JsonSerializerOptions { WriteIndented = true }));
             App.LogException(ex, "ui-verification");

@@ -9,6 +9,7 @@ internal sealed class PackageContent : IDisposable
     internal const string CurrentExecutableName = "ShunshouToolbox.exe";
     internal const string LegacyExecutableName = "顺手工具箱.exe";
     internal const string CurrentResourceName = "ShunshouToolbox.pri";
+    internal const string PrivateAppName = "app/Shunshou.App.exe";
     internal PackageManifest Manifest { get; }
     internal Dictionary<string, PackageFile> Files { get; }
     internal HashSet<string> Directories { get; }
@@ -119,11 +120,24 @@ internal sealed class PackageContent : IDisposable
             AddParents(parents, file.Path);
         }
         if (parents.Any(paths.Contains)) throw new InvalidDataException("软件清单文件路径相互冲突。");
-        if ((!paths.Contains(CurrentExecutableName) && !paths.Contains(LegacyExecutableName))
-            || !paths.Contains("Shunshou.App.dll") || !paths.Contains("Shunshou.Core.dll"))
-            throw new InvalidDataException("此文件夹缺少顺手工具箱产品标识文件。");
-        if (paths.Contains(CurrentExecutableName) && !paths.Contains(CurrentResourceName))
-            throw new InvalidDataException("此安装包缺少与主程序同名的界面资源文件。");
+        bool cleanLayout = VersionNumber(manifest.Version) >= new Version(0, 3, 0, 0);
+        if (cleanLayout)
+        {
+            if (!paths.Contains(CurrentExecutableName) || !paths.Contains(PrivateAppName) ||
+                !paths.Contains("app/Shunshou.App.dll") || !paths.Contains("app/Shunshou.Core.dll") ||
+                !paths.Contains("app/Shunshou.App.pri"))
+                throw new InvalidDataException("此安装包缺少启动器或 app 文件夹中的运行文件。");
+            if (paths.Contains("Shunshou.App.dll") || paths.Contains(CurrentResourceName))
+                throw new InvalidDataException("此版本的软件目录布局不完整，请重新下载完整安装包。");
+        }
+        else
+        {
+            if ((!paths.Contains(CurrentExecutableName) && !paths.Contains(LegacyExecutableName))
+                || !paths.Contains("Shunshou.App.dll") || !paths.Contains("Shunshou.Core.dll"))
+                throw new InvalidDataException("此文件夹缺少顺手工具箱产品标识文件。");
+            if (paths.Contains(CurrentExecutableName) && !paths.Contains(CurrentResourceName))
+                throw new InvalidDataException("此安装包缺少与主程序同名的界面资源文件。");
+        }
         return manifest;
     }
 

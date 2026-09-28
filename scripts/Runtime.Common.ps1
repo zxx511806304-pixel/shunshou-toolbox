@@ -29,7 +29,7 @@ function Get-VerifiedDownload {
             if ($LASTEXITCODE -ne 0) { throw "Download failed: $Uri" }
         }
         if ((Get-FileHash -LiteralPath $temporary -Algorithm SHA256).Hash -ne $Sha256) { throw "SHA256 mismatch; refusing changed upstream content: $Uri" }
-        [IO.File]::Move([IO.Path]::GetFullPath($temporary), [IO.Path]::GetFullPath($Path), $false)
+        [IO.File]::Move([IO.Path]::GetFullPath($temporary), [IO.Path]::GetFullPath($Path))
     }
     finally { if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary } }
 }

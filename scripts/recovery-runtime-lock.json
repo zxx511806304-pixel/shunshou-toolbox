@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "verifiedDate": "2026-09-12",
+  "distribution": "Cygwin official x86_64 stable package repository",
+  "setupIndexUrl": "https://cygwin.com/ftp/cygwin/x86_64/setup.xz",
+  "setupTimestamp": 1789056671,
+  "packages": [
+    {
+      "package": "cygwin",
+      "version": "3.6.10-1",
+      "install": {
+        "url": "https://cygwin.com/ftp/cygwin/x86_64/release/cygwin/cygwin-3.6.10-1-x86_64.tar.xz",
+        "file": "cygwin-3.6.10-1-x86_64.tar.xz",
+        "size": 1626060,
+        "sha512": "50e5a100f5229eecba279799363a30d599f8c6ad06967eabc4fc8ed9105736576a522539abc250110282cf18da8536d4e408823cc6c0d2abd8692a91d9fd3341",
+        "sha256": "52ad91827b4611aee82b325c78038cb199a8508c629c36513373bea1241707e8"
+      },
+      "source": {
+        "url": "https://cygwin.com/ftp/cygwin/src/release/cygwin/cygwin-3.6.10-1-src.tar.xz",
+        "file": "cygwin-3.6.10-1-src.tar.xz",
+        "size": 9314980,
+        "sha512": "fa11f0332f97f915b81c189412d83fac8a459653d8941b609e09776a55b3c9f4f669caa0d132f5b2011e924e0ef9922a137b59af9c086d3f052f3ecc318e1e56",
+        "sha256": "895bb3969786d92e92e3836d4860ed0764c1888fa7f4d2dd9d6baca018935325"
+      },
+      "files": [
+        {
+          "name": "cygwin1.dll",
+          "archivePath": "usr/bin/cygwin1.dll",
+          "sha256": "d66788fce4ef1ce787fc1a83f2dd1e063e58bbf0d48ad93164ee195a983c035e"
+        }
+      ]
+    },
+    {
+      "package": "libgcc1",
+      "version": "14.4.0-1",
+      "install": {
+        "url": "https://cygwin.com/ftp/cygwin/x86_64/release/gcc/libgcc1/libgcc1-14.4.0-1-x86_64.tar.zst",
+        "file": "libgcc1-14.4.0-1-x86_64.tar.zst",
+        "size": 59166,
+        "sha512": "5ac8a56e5eee285efcd6dbd05a473e795e181021d7194b8a98dfe2fa201a71f0abe2908e0b4c81490eb5ef472efaeac8e56a61a5f289eee4ad6e90e52a844ff8",
+        "sha256": "81df68770dd59e1e451d6bce1ba75c020339ce05cf262c6ea5e76aea233ef1f0"
+      },
+      "source": {
+        "url": "https://cygwin.com/ftp/cygwin/x86_64/release/gcc/gcc-14.4.0-1-src.tar.zst",
+        "file": "gcc-14.4.0-1-src.tar.zst",
+        "size": 91626118,
+        "sha512": "a4fa4be6b610a7d868271027c17c46c5f64e1b125e0bec1d51d34cc47f53a670c95841ad4fdcb5aa236244e8b09e5dc194c64e788fc5011459ba2eb29a815299",
+        "sha256": "c8b25799a0b8b33620661db6292ce72ef7264155466642f60a92e2c85b9cff1c"
+      },
+      "files": [
+        {
+          "name": "cyggcc_s-seh-1.dll",
+          "archivePath": "usr/bin/cyggcc_s-seh-1.dll",
+          "sha256": "2aa1cb02f63b828c7fdbf0c23e7cc7832047184913c7d81db5d5102caef0a4eb"
+        }
+      ]
+    },
+    {
+      "package": "libiconv2",
+      "version": "1.19-2",
+      "install": {
+        "url": "https://cygwin.com/ftp/cygwin/x86_64/release/libiconv/libiconv2/libiconv2-1.19-2-x86_64.tar.xz",
+        "file": "libiconv2-1.19-2-x86_64.tar.xz",
+        "size": 555664,
+        "sha512": "a1b23e24e0a495e7163923bcf40a4b933403e0826cfc0d9bde785bc92c909b8c4fb94b1e6b2c0242f4328a723855e72ff3baab9f557ef855b7fe7a7d901b0943",
+        "sha256": "c424218c7ef7d82a3481d5aa7f1f1dda8364524fb86b687871184647ec59fcbf"
+      },
+      "source": {
+        "url": "https://cygwin.com/ftp/cygwin/src/release/libiconv/libiconv-1.19-2-src.tar.xz",
+        "file": "libiconv-1.19-2-src.tar.xz",
+        "size": 5086384,
+        "sha512": "62288f9458b6c5a9eec369900971e9c552747b03df0198fbe1749ca93f76bf3d3079109f115ec0f53b2dc2f72c0c8624e21fa439fc41b9a0be339465fce1c534",
+        "sha256": "c8cfab83524251921a10a29293b583c034a8e5d7f165588adf1923e416dc1647"
+      },
+      "files": [
+        {
+          "name": "cygiconv-2.dll",
+          "archivePath": "usr/bin/cygiconv-2.dll",
+          "sha256": "ef60ac449ec718c1724bad21c9e0c9904659ada9644f3ac7ea8ad5d5b8d8140e"
+        }
+      ]
+    },
+    {
+      "package": "libncursesw10",
+      "version": "6.5+20240427-1",
+      "install": {
+        "url": "https://cygwin.com/ftp/cygwin/x86_64/release/ncurses/libncursesw10/libncursesw10-6.5+20240427-1.tar.xz",
+        "file": "libncursesw10-6.5+20240427-1.tar.xz",
+        "size": 393928,
+        "sha512": "08102f7a7083cb5663fecc46d819f2ece4123444a8f94c42300f03f7eebd40395f556c44b22ab58bf57321b44d9b8fb8b19358e535c7500d36e52d48b05dcca8",
+        "sha256": "e829d7b4c2177c6a81a31bdaeb0523e5e5da4ea91078d9292e8d528ed34241e9"
+      },
+      "source": {
+        "url": "https://cygwin.com/ftp/cygwin/x86_64/release/ncurses/ncurses-6.5+20240427-1-src.tar.xz",
+        "file": "ncurses-6.5+20240427-1-src.tar.xz",
+        "size": 3703872,
+        "sha512": "e16cffd412ae0b998553a162041b71a5fb20b89b36a1d2acc5de633a82430010de58439fddbd16bfba1679697659a43d3672b9a3f53e03353bd4ad22a7a8f09b",
+        "sha256": "eb342b46105d874711eca7d0f347a71aea12a7460d46c74f2c95132c29bb92ca"
+      },
+      "files": [
+        {
+          "name": "cygncursesw-10.dll",
+          "archivePath": "usr/bin/cygncursesw-10.dll",
+          "sha256": "1a211a6953dbfd99b04a12e8d0c2f47ec69099e783d254a9aa8e1aa39ea994de"
+        }
+      ]
+    },
+    {
+      "package": "libjpeg8",
+      "version": "3.1.4.1-1",
+      "install": {
+        "url": "https://cygwin.com/ftp/cygwin/x86_64/release/libjpeg-turbo/libjpeg8/libjpeg8-3.1.4.1-1-x86_64.tar.xz",
+        "file": "libjpeg8-3.1.4.1-1-x86_64.tar.xz",
+        "size": 193444,
+        "sha512": "1ccbb4e25e85a8f30d33dba13841cefdd71f27e8178a3931938eab15612b6f9eeb43d69a87cf92bc7eb39ba0576eb63561c5eb15339ccbe19bc34ae23dc3943c",
+        "sha256": "51cf30d91e3c2190d1fdff02954617a2f9d78891e38751048caa15d3bcd13f40"
+      },
+      "source": {
+        "url": "https://cygwin.com/ftp/cygwin/src/release/libjpeg-turbo/libjpeg-turbo-3.1.4.1-1-src.tar.xz",
+        "file": "libjpeg-turbo-3.1.4.1-1-src.tar.xz",
+        "size": 2530808,
+        "sha512": "e48faa6ab09b95ef8a44dbc87dc6355f597e59951ef3d684dd10a6e19186eadc583fc37906ded80061a776d320df87729f5eda8abdd56d038be354d9ee915593",
+        "sha256": "fc3d8c0ab4b4cf1682d7fd4a9d1a62708cfdd44c9ef0ebbb2f72356578b6968f"
+      },
+      "files": [
+        {
+          "name": "cygjpeg-8.dll",
+          "archivePath": "usr/bin/cygjpeg-8.dll",
+          "sha256": "09603b98dfa3510d02112b30457e4f92c54166aefb52c8b6576e58b7c13ca91e"
+        }
+      ]
+    },
+    {
+      "package": "zlib0",
+      "version": "1.3.2-1",
+      "install": {
+        "url": "https://cygwin.com/ftp/cygwin/x86_64/release/zlib/zlib0/zlib0-1.3.2-1-x86_64.tar.zst",
+        "file": "zlib0-1.3.2-1-x86_64.tar.zst",
+        "size": 46254,
+        "sha512": "d79ba6098cadf6bf2f32f35d9cd54729293c64b3c9daabb9d080f52861a19db71544d5710fdbd61ff45e7c2ae4eecb3f2e3b8a1e3bc05695b8cfe01c7639c53a",
+        "sha256": "b0314c05b5ed130ddc1f0fe988e1f2aec15723d609d912e7d6300f47aa3c540e"
+      },
+      "source": {
+        "url": "https://cygwin.com/ftp/cygwin/x86_64/release/zlib/zlib-1.3.2-1-src.tar.zst",
+        "file": "zlib-1.3.2-1-src.tar.zst",
+        "size": 1321796,
+        "sha512": "10aa89718be99490ba9e76c19cf8e7e5cbb2a84c7510ea928c87c60279cb5ef0beb58def1049f427139e2b2024e4434ca32bdfbf7cd9a73ea7672684b2b3bcb9",
+        "sha256": "957ebd011e6ea7c079dd1f0833a3d57840ee3930aa5bfc7e478afa500093c926"
+      },
+      "files": [
+        {
+          "name": "cygz.dll",
+          "archivePath": "usr/bin/cygz.dll",
+          "sha256": "5f10051462800d441c6aa3637db9e51549c4da288b288ff78b05a68a6dc19d7f"
+        }
+      ]
+    },
+    {
+      "package": "terminfo",
+      "version": "6.5+20240427-1",
+      "install": {
+        "url": "https://cygwin.com/ftp/cygwin/x86_64/release/ncurses/terminfo/terminfo-6.5+20240427-1.tar.xz",
+        "file": "terminfo-6.5+20240427-1.tar.xz",
+        "size": 94760,
+        "sha512": "128fb04f188bbf2af3060416193c9879a9cbbf7e5486febf851f35c3d9d00b9d61a0e2bf4be575d2308fd665a224ce5674485dcfd071125c3a8d199a4b88a042",
+        "sha256": "2f55b9233fd027b2a63a1731b90a10c304b9fb94e206deddee90f2137d10f604"
+      },
+      "source": {
+        "url": "https://cygwin.com/ftp/cygwin/x86_64/release/ncurses/ncurses-6.5+20240427-1-src.tar.xz",
+        "file": "ncurses-6.5+20240427-1-src.tar.xz",
+        "size": 3703872,
+        "sha512": "e16cffd412ae0b998553a162041b71a5fb20b89b36a1d2acc5de633a82430010de58439fddbd16bfba1679697659a43d3672b9a3f53e03353bd4ad22a7a8f09b",
+        "sha256": "eb342b46105d874711eca7d0f347a71aea12a7460d46c74f2c95132c29bb92ca"
+      },
+      "files": [
+        {
+          "name": "63/cygwin",
+          "archivePath": "usr/share/terminfo/63/cygwin",
+          "sha256": "3e04bfdcc0764f4e28655701864845752cd3f77d0c52390637ebe588f91665cf"
+        }
+      ],
+      "licenseFromPackage": "libncursesw10"
+    }
+  ],
+  "additionalSources": [
+    {
+      "package": "e2fsprogs-1.45.3",
+      "file": "cygwin-e2fsprogs-1.45.3-0.el7.src.rpm",
+      "url": "https://copr-be.cloud.fedoraproject.org/results/grenier/cygwin-testdisk/epel-7-x86_64/01015844-cygwin-e2fsprogs/cygwin-e2fsprogs-1.45.3-0.el7.src.rpm",
+      "sha256": "725e80b3430547bead55875fb3ad3a4829e76fcc5fecf0ee2dcb7f3278104d69"
+    },
+    {
+      "package": "ntfsprogs-2.0.0",
+      "file": "cygwin-ntfsprogs-2.0.0-0.el7.centos.src.rpm",
+      "url": "https://copr-be.cloud.fedoraproject.org/results/grenier/cygwin-testdisk/epel-7-x86_64/00443037-cygwin-ntfsprogs/cygwin-ntfsprogs-2.0.0-0.el7.centos.src.rpm",
+      "sha256": "76f02034d2b82766505b6a0f291fa86d01968b6a1bf24ed39ff7b0af989b0755"
+    },
+    {
+      "package": "libewf-20140608",
+      "file": "cygwin64-libewf-20140608-1.el7.src.rpm",
+      "url": "https://copr-be.cloud.fedoraproject.org/results/grenier/cygwin-testdisk/epel-7-x86_64/01345857-cygwin64-libewf/cygwin64-libewf-20140608-1.el7.src.rpm",
+      "sha256": "8d4c4107ad9bf3d75b358db83246650c3f38e7ffffc12f18295f91d14c606b25"
+    },
+    {
+      "package": "testdisk-7.2",
+      "file": "testdisk-7.2.tar.bz2",
+      "url": "https://www.cgsecurity.org/testdisk-7.2.tar.bz2",
+      "sha256": "f8343be20cb4001c5d91a2e3bcd918398f00ae6d8310894a5a9f2feb813c283f"
+    }
+  ],
+  "retainedDll": {
+    "name": "cygewf-2.dll",
+    "sha256": "e904b5a3f55572fec2d08d222a6c1a54dd768bbb72e666f8eebffa0c68c19214",
+    "sourcePackage": "cygwin64-libewf-20140608-1.el7.src.rpm",
+    "verifiedBinaryRpm": "https://copr-be.cloud.fedoraproject.org/results/grenier/cygwin-testdisk/epel-7-x86_64/01345857-cygwin64-libewf/cygwin64-libewf-20140608-1.el7.noarch.rpm"
+  },
+  "redistributedExecutable": {
+    "name": "photorec_win.exe",
+    "sha256": "d75b9a6ff60f91479085a578aca518abb1cd7405f24506a61afa2f7e222147bf",
+    "sourcePackage": "testdisk-7.2.tar.bz2",
+    "distribution": "Unmodified standalone PhotoRec only; testdisk_win.exe is not redistributed"
+  }
+}

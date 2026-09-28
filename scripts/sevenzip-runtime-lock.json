@@ -1,0 +1,13 @@
+{
+  "Version": "26.03",
+  "ReleasedUtc": "2026-09-03",
+  "ProjectUrl": "https://www.7-zip.org/",
+  "License": "LGPL-2.1-or-later（含 unRAR 限制条款：解压 .rar 允许，禁止用其代码制作 RAR 压缩器）",
+  "Asset": {
+    "File": "7z2603-x64.msi",
+    "Url": "https://github.com/ip7z/7zip/releases/download/26.03/7z2603-x64.msi",
+    "Sha256": "c0680064d698a62dd4a5a47f403db356a6531a5473e4c4b1d090ea2590513926",
+    "Bytes": 2007040,
+    "HashSource": "GitHub Releases 资产摘要（ip7z/7zip 26.03，sha256 digest）"
+  }
+}

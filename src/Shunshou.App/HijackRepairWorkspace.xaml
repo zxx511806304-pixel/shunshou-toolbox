@@ -1,0 +1,47 @@
+<UserControl x:Class="Shunshou.App.HijackRepairWorkspace" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid RowSpacing="12">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Border Style="{StaticResource CardStyle}" Padding="18,14">
+      <Grid ColumnSpacing="16">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel Spacing="6">
+          <TextBlock Text="浏览器劫持修复" FontSize="16" FontWeight="SemiBold"/>
+          <TextBlock Text="扫描桌面快捷方式、浏览器主页设置与可疑启动项，自动修复可修复的项目。" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Top">
+          <Button x:Name="ScanButton" Content="开始检查" Style="{StaticResource AccentButtonStyle}" Click="Scan_Click" Padding="20,8" AutomationProperties.Name="开始检查浏览器劫持问题"/>
+          <Button x:Name="FixAllButton" Content="全部修复" Click="FixAll_Click" IsEnabled="False" AutomationProperties.Name="修复所有可自动修复的项目"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+    <Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="18,14">
+      <Grid RowSpacing="10">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <InfoBar x:Name="Notice" IsOpen="False" IsClosable="True" Severity="Informational"/>
+        <ProgressBar x:Name="ProgressBar" Grid.Row="1" IsIndeterminate="True" Visibility="Collapsed"/>
+        <ListView x:Name="FindingList" Grid.Row="2" SelectionMode="None" AutomationProperties.Name="劫持检查结果列表">
+          <ListView.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnSpacing="12" Padding="0,4">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto"/>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <FontIcon Glyph="{Binding IconGlyph}" FontSize="20" VerticalAlignment="Top" Margin="0,2,0,0"/>
+                <StackPanel Grid.Column="1" Spacing="2">
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                  <TextBlock Text="{Binding Detail}" Style="{StaticResource MutedTextStyle}" FontSize="12" TextWrapping="Wrap"/>
+                </StackPanel>
+                <Button Grid.Column="2" Content="修复" Click="FixItem_Click" Tag="{Binding Id}" IsEnabled="{Binding CanAutoFix}" VerticalAlignment="Top" AutomationProperties.Name="修复此项目"/>
+              </Grid>
+            </DataTemplate>
+          </ListView.ItemTemplate>
+        </ListView>
+      </Grid>
+    </Border>
+    <Border Grid.Row="2" Style="{StaticResource CardStyle}" Padding="18,14">
+      <TextBlock x:Name="StatusText" Style="{StaticResource MutedTextStyle}" VerticalAlignment="Center"/>
+    </Border>
+  </Grid>
+</UserControl>

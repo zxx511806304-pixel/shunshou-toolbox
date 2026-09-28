@@ -22,6 +22,13 @@ jobs:
       - uses: actions/setup-dotnet@v6.0.0
         with:
           global-json-file: global.json
+      - uses: actions/setup-python@v7.0.0
+        id: ai-python
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.14'
       - name: Restore
         run: dotnet restore Shunshou.slnx
       - name: Fetch verified offline processing components
@@ -29,8 +36,23 @@ jobs:
         run: |
           ./scripts/Download-Runtime.ps1
           ./scripts/Download-OcrModels.ps1
+          ./scripts/Download-Everything.ps1
+          ./scripts/Download-Recovery.ps1
+          ./scripts/Get-VideoDownloadRuntime.ps1
+          ./scripts/Build-SttnModel.ps1 -Python '${{ steps.ai-python.outputs.python-path }}'
       - name: Build
         run: dotnet build Shunshou.slnx -c Release --no-restore
+      - name: Verify screen recording options without desktop or audio capture
+        run: dotnet run --project tests/Shunshou.ScreenRecording.Tests -c Release --no-build -- artifacts/recording-options
+      - name: Verify video cancellation without a UI continuation
+        run: dotnet run --project tests/Shunshou.VideoCancellation.Tests -c Release --no-build -- artifacts/video-cancellation
+      - name: Verify subtitle download, conversion and transfer limits
+        shell: pwsh
+        run: |
+          dotnet run --project tests/Shunshou.Subtitle.Tests -c Release --no-build -- .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project tests/Shunshou.Subtitle.Tests -c Release --no-build -- . --limits-only
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify generated documents, images, archives, audio and video
         run: dotnet run --project tests/Shunshou.SmokeTests -c Release --no-build -- artifacts/smoke
       - name: Verify deployment and shortcut isolation
@@ -46,10 +68,14 @@ jobs:
           ./scripts/Build-Portable.ps1
           $portableVersion = ([xml](Get-Content -LiteralPath ./Directory.Build.props -Raw)).Project.PropertyGroup.Version
           $portableRoot = Join-Path $PWD "dist/ShunshouToolbox-$portableVersion-win-x64"
-          foreach ($entry in @('ShunshouToolbox.exe', 'ShunshouToolbox.pri', 'Usage.md')) {
+          foreach ($entry in @('ShunshouToolbox.exe', 'app/Shunshou.App.exe', 'app/Shunshou.App.pri', 'docs/Usage.md')) {
             if (-not (Test-Path -LiteralPath (Join-Path $portableRoot $entry) -PathType Leaf)) { throw "Portable entry is missing: $entry" }
           }
           if (Test-Path -LiteralPath (Join-Path $portableRoot '顺手工具箱.exe')) { throw 'New portable package still includes the obsolete Chinese apphost.' }
+          if (@(Get-ChildItem -LiteralPath $portableRoot).Count -ne 4) { throw 'Clean portable package must have exactly four root entries before first launch.' }
+      - name: Verify native launcher arguments and failure paths
+        shell: pwsh
+        run: ./scripts/Test-Launcher.ps1 -OutputRoot artifacts/launcher
       - name: Build offline self-extracting package
         shell: pwsh
         run: ./scripts/Build-Setup.ps1

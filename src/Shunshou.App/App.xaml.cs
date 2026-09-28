@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Shunshou.DesktopIntegration;
+using Shunshou.Core;
 using System.Runtime.InteropServices;
 
 namespace Shunshou.App;
@@ -11,7 +12,9 @@ public partial class App : Application
 {
     private Window? _window;
     private IDisposable? _applicationLease;
-    
+    private Thread? _activateListener;
+    private CancellationTokenSource? _activateListenerCancellation;
+
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code
     /// executed, and as such is the logical equivalent of main() or WinMain().
@@ -36,9 +39,15 @@ public partial class App : Application
         {
             var verificationLaunch = Environment.GetCommandLineArgs().Skip(1).Any(argument =>
                 argument.StartsWith("--verify", StringComparison.Ordinal) || argument.StartsWith("--screenshot", StringComparison.Ordinal));
+            var recoveryLaunch = Environment.GetCommandLineArgs().Contains("--recovery", StringComparer.Ordinal);
             if (!verificationLaunch)
             {
-                try { _applicationLease = UpdateCoordination.AcquireApplicationLease(AppContext.BaseDirectory); }
+                try
+                {
+                    _applicationLease = recoveryLaunch
+                        ? UpdateCoordination.AcquireExistingApplicationLease(AppPaths.InstallationDirectory)
+                        : UpdateCoordination.AcquireApplicationLease(AppPaths.InstallationDirectory);
+                }
                 catch (Exception ex)
                 {
                     LogException(ex, "update-coordination");
@@ -48,7 +57,9 @@ public partial class App : Application
                 }
                 if (_applicationLease is null)
                 {
-                    MessageBox(nint.Zero, "软件正在更新，请等待更新完成后再打开。", "顺手工具箱", 0x40);
+                    MessageBox(nint.Zero, recoveryLaunch
+                        ? "请先从其他磁盘正常打开工具箱，再进入误删恢复。若软件正在更新，请等待更新完成。"
+                        : "软件正在更新，请等待更新完成后再打开。", "顺手工具箱", 0x40);
                     Exit();
                     return;
                 }
@@ -56,17 +67,66 @@ public partial class App : Application
             }
             _window = new MainWindow();
             _window.Activate();
-            if (!verificationLaunch)
+            if (Environment.GetCommandLineArgs().Contains("--startup", StringComparer.Ordinal) && _window is MainWindow startupWindow)
+                startupWindow.MinimizeForStartup();
+            if (!verificationLaunch && !recoveryLaunch)
             {
                 try
                 {
-                    var result = new DesktopShortcutService().InitializeOnNormalLaunch(AppContext.BaseDirectory);
+                    var result = new DesktopShortcutService().InitializeOnNormalLaunch(AppPaths.InstallationDirectory);
                     foreach (var warning in result.Warnings) LogException(new IOException(warning), "desktop-integration");
                 }
                 catch (Exception ex) { LogException(ex, "desktop-integration"); }
             }
+            StartActivateListener();
         }
         catch (Exception ex) { LogException(ex, "launch"); throw; }
+    }
+
+    /// <summary>
+    /// Spawns a background thread that blocks on the single-instance activation event. When a
+    /// second launcher attempt is detected, the event is set and this thread wakes up to
+    /// restore and bring the existing main window to the foreground. Lives for the entire
+    /// process lifetime and is torn down on process exit.
+    /// </summary>
+    private void StartActivateListener()
+    {
+        var evt = Program.ActivateEvent;
+        if (evt is null) return;
+        _activateListenerCancellation = new CancellationTokenSource();
+        var token = _activateListenerCancellation.Token;
+        _activateListener = new Thread(() =>
+        {
+            try
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    // Block until the second instance signals, then dispatch UI work.
+                    // WaitOne with a timeout allows the cancellation token to be observed.
+                    if (WaitHandle.WaitAny(new[] { evt, token.WaitHandle }, Timeout.InfiniteTimeSpan) != 0)
+                        continue;
+                    var window = _window;
+                    if (window is null) continue;
+                    var queue = window.DispatcherQueue;
+                    if (queue is null) continue;
+                    queue.TryEnqueue(() =>
+                    {
+                        try
+                        {
+                            if (window is MainWindow main)
+                                main.ActivateFromExternal();
+                            else
+                            {
+                                window.Activate();
+                            }
+                        }
+                        catch (Exception ex) { LogException(ex, "single-instance-activate"); }
+                    });
+                }
+            }
+            catch (Exception ex) { LogException(ex, "single-instance-listener"); }
+        }) { Name = "ShunshouActivate", IsBackground = true };
+        _activateListener.Start();
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
@@ -74,9 +134,29 @@ public partial class App : Application
 
     internal static void LogException(Exception exception, string source)
     {
+        if (AppPaths.LoggingDisabled)
+        {
+            var arguments = Environment.GetCommandLineArgs();
+            int verification = -1;
+            foreach (string flag in new[] { "--verify-shop", "--verify-v040", "--verify-v100", "--verify-v110", "--verify-v120", "--verify-web-tools" })
+            {
+                verification = Array.IndexOf(arguments, flag);
+                if (verification >= 0) break;
+            }
+            if (verification >= 0 && verification + 1 < arguments.Length)
+            {
+                try
+                {
+                    Directory.CreateDirectory(arguments[verification + 1]);
+                    File.AppendAllText(Path.Combine(arguments[verification + 1], "diagnostics.log"), $"{source}: {exception}{Environment.NewLine}");
+                }
+                catch { }
+            }
+            return;
+        }
         try
         {
-            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ShunshouToolbox", "logs");
+            var directory = Path.Combine(AppPaths.DataDirectory, "logs");
             Directory.CreateDirectory(directory);
             var path = Path.Combine(directory, $"error-{DateTime.Now:yyyyMMdd}.log");
             File.AppendAllText(path, $"[{DateTime.Now:O}] {source}{Environment.NewLine}{exception}{Environment.NewLine}{Environment.NewLine}");

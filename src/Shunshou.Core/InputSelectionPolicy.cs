@@ -2,7 +2,7 @@ namespace Shunshou.Core;
 
 public enum InputTool
 {
-    TargetZip, CreateZip, ExtractZip, Pdf, MergePdf, ImageConvert, Ocr, Media, Search, Rename, UndoRename
+    TargetZip, CreateZip, ExtractZip, Archive, Pdf, MergePdf, ImageConvert, CropImage, Ocr, Media, TrimMedia, ExtractAudio, Search, Rename, UndoRename
 }
 
 public sealed record InputSelectionResult(
@@ -29,7 +29,7 @@ public static class InputSelectionPolicy
     };
 
     // OCR keeps a batch of images in the workspace and processes its selected image.
-    public static bool AllowsMultiple(InputTool tool) => tool is InputTool.MergePdf or InputTool.ImageConvert or InputTool.Ocr or InputTool.Rename;
+    public static bool AllowsMultiple(InputTool tool) => tool is InputTool.MergePdf or InputTool.ImageConvert or InputTool.CropImage or InputTool.Ocr or InputTool.Rename;
 
     /// <summary>Finds compatible existing inputs without imposing a processing-count limit or changing the source collection.</summary>
     public static IReadOnlyList<string> CompatiblePaths(InputTool tool, IEnumerable<string> paths)
@@ -54,9 +54,10 @@ public static class InputSelectionPolicy
     public static string[] FileFilters(InputTool tool) => tool switch
     {
         InputTool.TargetZip or InputTool.ExtractZip => [".zip"],
+        InputTool.Archive => SevenZipService.SupportedExtensions,
         InputTool.Pdf or InputTool.MergePdf => [".pdf"],
-        InputTool.ImageConvert or InputTool.Ocr => ImageExtensions.ToArray(),
-        InputTool.Media => MediaExtensions.ToArray(),
+        InputTool.ImageConvert or InputTool.CropImage or InputTool.Ocr => ImageExtensions.ToArray(),
+        InputTool.Media or InputTool.TrimMedia or InputTool.ExtractAudio => MediaExtensions.ToArray(),
         InputTool.UndoRename => [".json"],
         _ => ["*"]
     };
@@ -123,9 +124,10 @@ public static class InputSelectionPolicy
             InputTool.TargetZip => directory || file && extension.Equals(".zip", StringComparison.OrdinalIgnoreCase),
             InputTool.CreateZip or InputTool.Search => file || directory,
             InputTool.ExtractZip => file && extension.Equals(".zip", StringComparison.OrdinalIgnoreCase),
+            InputTool.Archive => file && SevenZipService.SupportedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase),
             InputTool.Pdf or InputTool.MergePdf => file && extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase),
-            InputTool.ImageConvert or InputTool.Ocr => file && ImageExtensions.Contains(extension),
-            InputTool.Media => file && MediaExtensions.Contains(extension),
+            InputTool.ImageConvert or InputTool.CropImage or InputTool.Ocr => file && ImageExtensions.Contains(extension),
+            InputTool.Media or InputTool.TrimMedia or InputTool.ExtractAudio => file && MediaExtensions.Contains(extension),
             InputTool.Rename => file,
             InputTool.UndoRename => file && extension.Equals(".json", StringComparison.OrdinalIgnoreCase),
             _ => false
@@ -140,9 +142,10 @@ public static class InputSelectionPolicy
         InputTool.TargetZip => "请添加一个 ZIP 压缩包或图片文件夹。",
         InputTool.CreateZip => "请添加一个可访问的文件或文件夹。",
         InputTool.ExtractZip => "请添加一个 ZIP 压缩包。",
+        InputTool.Archive => "请添加一个 .7z、.rar、.zip、.tar 或 .cab 压缩包。",
         InputTool.Pdf or InputTool.MergePdf => "请添加 PDF 文件。",
-        InputTool.ImageConvert or InputTool.Ocr => "请添加 PNG、JPG、WebP、BMP、TIFF 或 GIF 图片。",
-        InputTool.Media => "请添加音频或视频文件，例如 WAV、MP3、FLAC、MP4、MOV 或 MKV。",
+        InputTool.ImageConvert or InputTool.CropImage or InputTool.Ocr => "请添加 PNG、JPG、WebP、BMP、TIFF 或 GIF 图片。",
+        InputTool.Media or InputTool.TrimMedia or InputTool.ExtractAudio => "请添加音频或视频文件，例如 WAV、MP3、FLAC、MP4、MOV 或 MKV。",
         InputTool.Search => "请添加一个可访问的文件或文件夹作为搜索范围。",
         InputTool.UndoRename => "请选择重命名记录 JSON 文件。",
         _ => "请添加可访问的文件。"

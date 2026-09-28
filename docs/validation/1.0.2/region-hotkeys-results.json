@@ -1,0 +1,54 @@
+{
+  "Passed": true,
+  "Results": [
+    {
+      "Test": "normal",
+      "Passed": true,
+      "Result": "(20, 30, 400, 300)",
+      "Bounds": "-100,-80,640,480"
+    },
+    {
+      "Test": "reverse",
+      "Passed": true,
+      "Result": "(100, 80, 400, 320)",
+      "Bounds": "-100,-80,640,480"
+    },
+    {
+      "Test": "clamped",
+      "Passed": true,
+      "Result": "(0, 0, 640, 480)",
+      "Bounds": "-100,-80,640,480"
+    },
+    {
+      "Test": "undersized retry and Escape",
+      "Passed": true
+    },
+    {
+      "Test": "cancel 204",
+      "Passed": true
+    },
+    {
+      "Test": "cancel 6",
+      "Passed": true
+    },
+    {
+      "Test": "shortcuts callbacks and conflict",
+      "Passed": true,
+      "Conflict": "Ctrl \u002B Alt \u002B F9 \u5DF2\u88AB\u5360\u7528\uFF0C\u5F55\u5C4F\u671F\u95F4\u8BF7\u4F7F\u7528\u7A97\u53E3\u4E2D\u7684\u6682\u505C\u548C\u505C\u6B62\u6309\u94AE\u3002"
+    },
+    {
+      "Test": "shortcuts dispose/re-register",
+      "Passed": true
+    },
+    {
+      "Test": "F10 conflict rolls back F9 registration",
+      "Passed": true
+    },
+    {
+      "Test": "GDI resources after repeated selection",
+      "Passed": true,
+      "Before": 10,
+      "After": 10
+    }
+  ]
+}

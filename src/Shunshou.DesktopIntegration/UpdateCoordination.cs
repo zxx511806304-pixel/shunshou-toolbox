@@ -12,16 +12,19 @@ public sealed record RunningAppProcess(int ProcessId, string Name, string? Execu
 public static class UpdateCoordination
 {
     public static IDisposable? AcquireApplicationLease(string directory, string? lockRoot = null) => AcquireLease(directory, updating: false, lockRoot);
+    /// <summary>Recovery opens an existing application lease without creating any files or directories.</summary>
+    public static IDisposable? AcquireExistingApplicationLease(string directory, string? lockRoot = null) => AcquireLease(directory, updating: false, lockRoot, createIfMissing: false);
     public static IDisposable? AcquireUpdateLease(string directory, string? lockRoot = null) => AcquireLease(directory, updating: true, lockRoot);
 
     // Windows file sharing provides multiple app readers and an exclusive updater, across async
     // continuations and elevated windows. The lock lives outside the package, so it survives renames.
-    private static IDisposable? AcquireLease(string directory, bool updating, string? lockRoot)
+    private static IDisposable? AcquireLease(string directory, bool updating, string? lockRoot, bool createIfMissing = true)
     {
         var identity = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(NormalizeDirectory(directory))));
         lockRoot ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ShunshouToolbox", "locks");
-        Directory.CreateDirectory(lockRoot);
         var path = Path.Combine(lockRoot, identity + ".lock");
+        if (createIfMissing) Directory.CreateDirectory(lockRoot);
+        else if (!File.Exists(path)) return null;
         using var gate = new Mutex(false, @"Local\ShunshouToolbox.LockCreation." + identity);
         bool ownsGate;
         try { ownsGate = gate.WaitOne(TimeSpan.FromSeconds(5)); }
@@ -31,6 +34,7 @@ public static class UpdateCoordination
         {
             if (!File.Exists(path))
             {
+                if (!createIfMissing) return null;
                 try { using var created = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.ReadWrite); }
                 catch (IOException) when (File.Exists(path)) { }
             }
@@ -80,6 +84,8 @@ public static class UpdateCoordination
     {
         var root = NormalizeDirectory(directory);
         var toolsRoot = root + Path.DirectorySeparatorChar + "TOOLS" + Path.DirectorySeparatorChar;
+        var privateRoot = root + Path.DirectorySeparatorChar + "APP";
+        var privateToolsRoot = privateRoot + Path.DirectorySeparatorChar + "TOOLS" + Path.DirectorySeparatorChar;
         var blockers = new List<RunningAppProcess>();
         foreach (var process in Process.GetProcesses())
         {
@@ -98,7 +104,9 @@ public static class UpdateCoordination
                     }
                     var processRoot = NormalizeDirectory(Path.GetDirectoryName(executable)!);
                     var normalizedExecutable = processRoot + Path.DirectorySeparatorChar + Path.GetFileName(executable).ToUpperInvariant();
-                    if ((processRoot == root && IsApplicationEntryName(name)) || normalizedExecutable.StartsWith(toolsRoot, StringComparison.OrdinalIgnoreCase))
+                    if (((processRoot == root || processRoot == privateRoot) && IsApplicationEntryName(name)) ||
+                        normalizedExecutable.StartsWith(toolsRoot, StringComparison.OrdinalIgnoreCase) ||
+                        normalizedExecutable.StartsWith(privateToolsRoot, StringComparison.OrdinalIgnoreCase))
                         blockers.Add(new(process.Id, name, executable, false));
                 }
                 catch (InvalidOperationException) { /* The process exited while being inspected. */ }
@@ -112,7 +120,9 @@ public static class UpdateCoordination
     }
 
     private static bool IsApplicationEntryName(string name) => PackageIdentity.IsSupportedExecutableName(name + ".exe") || name.Equals("Shunshou.App", StringComparison.OrdinalIgnoreCase);
-    private static bool IsKnownApplicationName(string name) => IsApplicationEntryName(name) || name.Equals("ffmpeg", StringComparison.OrdinalIgnoreCase) || name.Equals("ffprobe", StringComparison.OrdinalIgnoreCase);
+    private static bool IsKnownApplicationName(string name) => IsApplicationEntryName(name) || name.Equals("ffmpeg", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("ffprobe", StringComparison.OrdinalIgnoreCase) || name.Equals("photorec_win", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("testdisk_win", StringComparison.OrdinalIgnoreCase);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern SafeFileHandle CreateFile(string path, uint access, FileShare share, nint security, FileMode mode, uint flags, nint template);

@@ -4,7 +4,9 @@ using System.Text;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using PdfSharp.Pdf.IO;
-using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
+using SkiaSharp;
+using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
+using UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor;
 using Windows.Data.Pdf;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
@@ -15,7 +17,7 @@ using WindowsPdf = Windows.Data.Pdf.PdfDocument;
 
 namespace Shunshou.Core;
 
-public sealed class PdfService
+public sealed partial class PdfService
 {
     public async Task<IReadOnlyList<string>> ExportImagesAsync(string input, string outputDir, int dpi,
         bool longImage, IProgress<ToolProgress>? progress = null, CancellationToken ct = default)
@@ -69,10 +71,11 @@ public sealed class PdfService
         finally { CleanupStaging(staging); }
     }
 
-    /// <summary>Exports real editable text. Page layout, charts and tables are not reconstructed.</summary>
+    /// <summary>Preserves page artwork and editable positioned text by default; optional text extraction supports OCR/reflow.</summary>
     public async Task<string> ExportEditableAsync(string input, string outputDir, string format,
-        IProgress<ToolProgress>? progress = null, CancellationToken ct = default)
+        IProgress<ToolProgress>? progress = null, CancellationToken ct = default, bool preserveLayout = true)
     {
+        if (preserveLayout) return await ExportLayoutAsync(input, outputDir, format, progress, ct);
         ValidateInput(input);
         format = format.TrimStart('.').ToLowerInvariant();
         if (format is not ("docx" or "pptx")) throw new ArgumentException("可编辑导出只支持 DOCX 和 PPTX。", nameof(format));
@@ -80,28 +83,57 @@ public sealed class PdfService
         string staging = CreateStaging(outputDir);
         try
         {
-            var pages = new List<string>();
+            var pages = new List<TextLayoutPage>();
             WindowsPdf? raster = null;
+            var ocr = new OcrService();
+            using var ocrSession = ocr.CreateSession();
             using var pdf = UglyToad.PdfPig.PdfDocument.Open(input);
             foreach (var page in pdf.GetPages())
             {
                 ct.ThrowIfCancellationRequested();
-                string text = ContentOrderTextExtractor.GetText(page, true);
-                if (string.IsNullOrWhiteSpace(text))
+                var native = ExtractNativeText(page);
+                var regions = page.GetImages().Select(image => image.BoundingBox)
+                    .Select(b => new SKRect((float)Math.Max(0, b.Left), (float)Math.Max(0, page.Height - b.Top),
+                        (float)Math.Min(page.Width, b.Right), (float)Math.Min(page.Height, page.Height - b.Bottom)))
+                    .Where(b => b.Width >= 12 && b.Height >= 12).ToList();
+                bool suspectText = page.Letters.Any(x => IsSuspectText(x.Value));
+                if (native.Count == 0 || suspectText)
+                    regions = [new SKRect(0, 0, (float)page.Width, (float)page.Height)];
+                // Render once per page, then OCR only raster regions. Native
+                // headers must not prevent text inside screenshots from being read.
+                if (regions.Count > 0)
                 {
                     raster ??= await WindowsPdf.LoadFromFileAsync(await StorageFile.GetFileFromPathAsync(Path.GetFullPath(input)));
                     string png = Path.Combine(staging, $"ocr-{page.Number}.png");
                     progress?.Report(new ToolProgress(75.0 * (page.Number - 1) / pdf.NumberOfPages,
-                        $"第 {page.Number} 页无文字层，正在本地识别"));
-                    // 150 DPI preserves ordinary document text and keeps an A4 page within the OS OCR width limit.
-                    await RenderPageAsync(raster, (uint)(page.Number - 1), png, 150, ct);
-                    try { text = await new OcrService().RecognizeAsync(png, ct); }
-                    catch (InvalidOperationException ex)
+                        $"正在补充第 {page.Number} 页图片区域的文字"));
+                    int dpi = ocr.HasBundledModels ? 200 : 150;
+                    await RenderPageAsync(raster, (uint)(page.Number - 1), png, dpi, ct);
+                    using var bitmap = SKBitmap.Decode(png) ?? throw new InvalidDataException("无法读取 PDF 页面图像。");
+                    double scaleX = bitmap.Width / page.Width, scaleY = bitmap.Height / page.Height;
+                    foreach (var region in MergeImageRegions(regions))
                     {
-                        throw new InvalidOperationException($"第 {page.Number} 页无法取得可编辑文字。{ex.Message} 已停止导出，避免生成缺页文档。", ex);
+                        ct.ThrowIfCancellationRequested();
+                        var bounds = new SKRectI(Math.Max(0, (int)Math.Floor(region.Left * scaleX)),
+                            Math.Max(0, (int)Math.Floor(region.Top * scaleY)),
+                            Math.Min(bitmap.Width, (int)Math.Ceiling(region.Right * scaleX)),
+                            Math.Min(bitmap.Height, (int)Math.Ceiling(region.Bottom * scaleY)));
+                        if (bounds.Width <= 0 || bounds.Height <= 0) continue;
+                        using var crop = new SKBitmap();
+                        if (!bitmap.ExtractSubset(crop, bounds)) throw new InvalidDataException("无法读取 PDF 图片区域。");
+                        string cropPath = Path.Combine(staging, "region.png");
+                        using (var image = SKImage.FromBitmap(crop))
+                        using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
+                        using (var file = File.Create(cropPath)) data.SaveTo(file);
+                        var result = await ocr.RecognizeLayoutAsync(cropPath, ocrSession, ct);
+                        foreach (var block in result.Blocks)
+                            native.Add(block with { Text = CleanXmlText(block.Text), X = (bounds.Left + block.X) / scaleX,
+                                Y = (bounds.Top + block.Y) / scaleY, Width = block.Width / scaleX,
+                                Height = block.Height / scaleY, FontSize = Math.Max(5, block.Height / scaleY * 0.85) });
                     }
+                    TryDelete(png);
                 }
-                pages.Add(CleanXmlText(text));
+                pages.Add(new TextLayoutPage(page.Width, page.Height, TextLayout.Merge(native)));
                 progress?.Report(new ToolProgress(75.0 * page.Number / pdf.NumberOfPages,
                     $"已提取第 {page.Number}/{pdf.NumberOfPages} 页文字"));
             }
@@ -112,10 +144,57 @@ public sealed class PdfService
             ct.ThrowIfCancellationRequested();
             string final = UniquePath(outputDir, Path.GetFileNameWithoutExtension(input) + "_text", "." + format);
             File.Move(temporary, final);
-            progress?.Report(new ToolProgress(100, "可编辑文字已导出；复杂版式、图表与表格结构未还原"));
+            int emptyPages = pages.Count(p => p.Blocks.Count == 0);
+            int review = pages.Sum(p => p.Blocks.Count(b => b.Confidence is < 0.8));
+            string note = emptyPages > 0 ? $"；{emptyPages} 页未检测到文字，已保留空页" : "";
+            if (review > 0) note += $"；{review} 处识别置信度较低，请对照原文复核";
+            progress?.Report(new ToolProgress(100, "可编辑文字与页面结构已导出；图表和复杂表格未重建" + note));
             return final;
         }
         finally { CleanupStaging(staging); }
+    }
+
+    private static List<TextLayoutBlock> ExtractNativeText(UglyToad.PdfPig.Content.Page page)
+    {
+        var letters = page.Letters.Where(l => !IsSuspectText(l.Value))
+            .GroupBy(l => (l.Value, X: Math.Round(l.StartBaseLine.X, 1), Y: Math.Round(l.StartBaseLine.Y, 1)))
+            .Select(g => g.First()).ToList();
+        var words = NearestNeighbourWordExtractor.Instance.GetWords(letters).ToList();
+        var result = new List<TextLayoutBlock>();
+        if (words.Count == 0) return result;
+        foreach (var paragraph in DocstrumBoundingBoxes.Instance.GetBlocks(words))
+        foreach (var line in paragraph.TextLines)
+        {
+            var box = line.BoundingBox;
+            string text = System.Text.RegularExpressions.Regex.Replace(line.Text, @"(?<=[\u3400-\u9fff])[ \t]+(?=[\u3400-\u9fff])", "");
+            var sizes = line.Words.SelectMany(w => w.Letters).Select(l => l.PointSize).Where(s => s > 0).Order().ToArray();
+            double size = sizes.Length > 0 ? sizes[sizes.Length / 2] : box.Height;
+            result.Add(new TextLayoutBlock(CleanXmlText(text), Math.Max(0, box.Left), Math.Max(0, page.Height - box.Top),
+                box.Width, box.Height, Math.Clamp(size, 5, 96), IsOcr: false));
+        }
+        return result;
+    }
+
+    private static bool IsSuspectText(string value) => value.Any(c => c == '\uFFFD'
+        || char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.PrivateUse
+        || (char.IsControl(c) && c is not '\r' and not '\n' and not '\t'));
+
+    private static IReadOnlyList<SKRect> MergeImageRegions(List<SKRect> input)
+    {
+        var merged = new List<SKRect>();
+        foreach (var source in input)
+        {
+            var region = source;
+            for (int i = merged.Count - 1; i >= 0; i--)
+            {
+                if (!region.IntersectsWith(merged[i])) continue;
+                region = new SKRect(Math.Min(region.Left, merged[i].Left), Math.Min(region.Top, merged[i].Top),
+                    Math.Max(region.Right, merged[i].Right), Math.Max(region.Bottom, merged[i].Bottom));
+                merged.RemoveAt(i); i = merged.Count;
+            }
+            merged.Add(region);
+        }
+        return merged;
     }
 
     public Task<string> MergeAsync(IEnumerable<string> inputs, string outputDir,
@@ -255,7 +334,7 @@ public sealed class PdfService
         WriteChunk(file, "IEND", []);
     }
 
-    private static void WriteWord(string path, IReadOnlyList<string> pages, CancellationToken ct)
+    private static void WriteWord(string path, IReadOnlyList<TextLayoutPage> pages, CancellationToken ct)
     {
         using var document = WordprocessingDocument.Create(path, WordprocessingDocumentType.Document);
         var main = document.AddMainDocumentPart();
@@ -264,18 +343,49 @@ public sealed class PdfService
         for (int p = 0; p < pages.Count; p++)
         {
             ct.ThrowIfCancellationRequested();
-            if (p > 0) body.Append(new W.Paragraph(new W.Run(new W.Break { Type = W.BreakValues.Page })));
-            foreach (string line in pages[p].Replace("\r", "").Split('\n'))
-                body.Append(new W.Paragraph(new W.Run(new W.RunProperties(
+            var paragraphs = BuildParagraphs(pages[p].Blocks);
+            if (paragraphs.Count == 0) paragraphs.Add(("", 11));
+            double median = pages[p].Blocks.Select(b => b.FontSize).Where(s => s > 0).DefaultIfEmpty(11).Order().ElementAt(pages[p].Blocks.Count(b => b.FontSize > 0) / 2);
+            for (int i = 0; i < paragraphs.Count; i++)
+            {
+                var item = paragraphs[i];
+                var properties = new W.ParagraphProperties(new W.SpacingBetweenLines { After = "100", Line = "260", LineRule = W.LineSpacingRuleValues.Auto });
+                if (p > 0 && i == 0) properties.PrependChild(new W.PageBreakBefore());
+                var runProperties = new W.RunProperties(
                     new W.RunFonts { Ascii = "Calibri", HighAnsi = "Calibri", EastAsia = "Microsoft YaHei" },
-                    new W.FontSize { Val = "22" }), new W.Text(line) { Space = SpaceProcessingModeValues.Preserve })));
+                    new W.FontSize { Val = Math.Round(Math.Clamp(item.Size, 8, 36) * 2).ToString(System.Globalization.CultureInfo.InvariantCulture) });
+                if (item.Size > median * 1.2) runProperties.InsertAt(new W.Bold(), 1);
+                body.Append(new W.Paragraph(properties, new W.Run(runProperties, new W.Text(item.Text) { Space = SpaceProcessingModeValues.Preserve })));
+            }
         }
-        body.Append(new W.SectionProperties(new W.PageSize { Width = 11906, Height = 16838 },
+        body.Append(new W.SectionProperties(new W.PageSize { Width = (uint)Math.Clamp(Math.Round(pages[0].Width * 20), 2880, 31680),
+                Height = (uint)Math.Clamp(Math.Round(pages[0].Height * 20), 2880, 31680) },
             new W.PageMargin { Top = 1134, Right = 1134, Bottom = 1134, Left = 1134, Header = 567, Footer = 567, Gutter = 0 }));
         main.Document.Save();
     }
 
-    private static void WritePresentation(string path, IReadOnlyList<string> pages, CancellationToken ct)
+    private static List<(string Text, double Size)> BuildParagraphs(IReadOnlyList<TextLayoutBlock> blocks)
+    {
+        var result = new List<(string Text, double Size)>();
+        TextLayoutBlock? previous = null;
+        foreach (var block in blocks)
+        {
+            double size = block.FontSize > 0 ? block.FontSize : 11;
+            bool continuation = previous is not null && result.Count > 0 && block.Y >= previous.Y
+                && block.Y - previous.Bottom <= Math.Max(3, previous.Height * 0.7)
+                && Math.Abs(block.X - previous.X) <= Math.Max(6, previous.Height * 0.5)
+                && Math.Abs(size - (previous.FontSize > 0 ? previous.FontSize : 11)) < 2
+                && !previous.Text.TrimEnd().EndsWith('。') && !previous.Text.TrimEnd().EndsWith('.')
+                && !previous.Text.TrimEnd().EndsWith('：') && !previous.Text.TrimEnd().EndsWith(':');
+            if (continuation)
+                result[^1] = (TextLayout.JoinLines([result[^1].Text, block.Text]), result[^1].Size);
+            else result.Add((block.Text, size));
+            previous = block;
+        }
+        return result;
+    }
+
+    private static void WritePresentation(string path, IReadOnlyList<TextLayoutPage> pages, CancellationToken ct)
     {
         using var document = PresentationDocument.Create(path, PresentationDocumentType.Presentation);
         var part = document.AddPresentationPart();
@@ -296,46 +406,37 @@ public sealed class PdfService
         var theme = master.AddNewPart<ThemePart>();
         theme.Theme = new A.Theme(ThemeElements()) { Name = "顺手工具箱" };
         var slideIds = new P.SlideIdList();
+        int slideWidth = (int)Math.Clamp(Math.Round(pages[0].Width * 12700), 914400, 51206400);
+        int slideHeight = (int)Math.Clamp(Math.Round(pages[0].Height * 12700), 914400, 51206400);
         part.Presentation = new P.Presentation(
             new P.SlideMasterIdList(new P.SlideMasterId { Id = 2147483648, RelationshipId = part.GetIdOfPart(master) }),
-            slideIds, new P.SlideSize { Cx = 12192000, Cy = 6858000, Type = P.SlideSizeValues.Screen16x9 },
+            slideIds, new P.SlideSize { Cx = slideWidth, Cy = slideHeight, Type = P.SlideSizeValues.Custom },
             new P.NotesSize { Cx = 6858000, Cy = 9144000 });
         uint nextId = 256;
         for (int p = 0; p < pages.Count; p++)
         {
-            var lines = WrapPresentationText(pages[p]).ToArray();
-            for (int chunk = 0; chunk < Math.Max(1, lines.Length); chunk += 14)
+            ct.ThrowIfCancellationRequested();
+            var slide = part.AddNewPart<SlidePart>();
+            slide.AddPart(layout);
+            var tree = EmptyShapeTree();
+            double scale = Math.Min(slideWidth / pages[p].Width, slideHeight / pages[p].Height);
+            double offsetX = (slideWidth - pages[p].Width * scale) / 2, offsetY = (slideHeight - pages[p].Height * scale) / 2;
+            uint shapeId = 2;
+            foreach (var block in pages[p].Blocks)
             {
                 ct.ThrowIfCancellationRequested();
-                var slide = part.AddNewPart<SlidePart>();
-                slide.AddPart(layout);
-                var tree = EmptyShapeTree();
-                string suffix = chunk == 0 ? "" : $" · 续 {chunk / 14}";
-                tree.Append(TextShape(2, $"第 {p + 1} 页{suffix}", [ $"第 {p + 1} 页{suffix}" ], 3000, 500000, 250000, 11192000, 650000));
-                tree.Append(TextShape(3, "可编辑正文", lines.Skip(chunk).Take(14), 2000, 500000, 1100000, 11192000, 5350000));
-                slide.Slide = new P.Slide(new P.CommonSlideData(tree), new P.ColorMapOverride(new A.MasterColorMapping()));
-                slide.Slide.Save();
-                slideIds.Append(new P.SlideId { Id = nextId++, RelationshipId = part.GetIdOfPart(slide) });
+                long x = (long)Math.Max(0, offsetX + block.X * scale), y = (long)Math.Max(0, offsetY + block.Y * scale);
+                long width = (long)Math.Max(12700, Math.Min(slideWidth - x, block.Width * scale * 1.06));
+                long height = (long)Math.Max(12700, Math.Min(slideHeight - y, block.Height * scale * 1.4));
+                int font = (int)Math.Clamp(Math.Round((block.FontSize > 0 ? block.FontSize : block.Height * 0.85) * scale / 127), 400, 9600);
+                string name = block.Confidence is < 0.8 ? "可编辑文字（识别待复核）" : "可编辑文字";
+                tree.Append(TextShape(shapeId++, name, [block.Text], font, x, y, width, height));
             }
+            slide.Slide = new P.Slide(new P.CommonSlideData(tree), new P.ColorMapOverride(new A.MasterColorMapping()));
+            slide.Slide.Save();
+            slideIds.Append(new P.SlideId { Id = nextId++, RelationshipId = part.GetIdOfPart(slide) });
         }
         theme.Theme.Save(); master.SlideMaster.Save(); layout.SlideLayout.Save(); part.Presentation.Save();
-    }
-
-    private static IEnumerable<string> WrapPresentationText(string text)
-    {
-        // Conservatively wrap by display width so that editable Chinese text is never silently clipped.
-        foreach (string raw in text.Replace("\r", "").Split('\n'))
-        {
-            if (raw.Length == 0) { yield return ""; continue; }
-            var line = new StringBuilder(); int units = 0;
-            foreach (var rune in raw.EnumerateRunes())
-            {
-                int size = rune.Value < 0x2E80 ? 1 : 2;
-                if (units + size > 72) { yield return line.ToString(); line.Clear(); units = 0; }
-                line.Append(rune.ToString()); units += size;
-            }
-            if (line.Length > 0) yield return line.ToString();
-        }
     }
 
     private static P.ShapeTree EmptyShapeTree() => new(
@@ -346,7 +447,8 @@ public sealed class PdfService
 
     private static P.Shape TextShape(uint id, string name, IEnumerable<string> lines, int size, long x, long y, long width, long height)
     {
-        var body = new P.TextBody(new A.BodyProperties { Wrap = A.TextWrappingValues.Square }, new A.ListStyle());
+        var body = new P.TextBody(new A.BodyProperties(new A.NormalAutoFit()) { Wrap = A.TextWrappingValues.None,
+            LeftInset = 0, RightInset = 0, TopInset = 0, BottomInset = 0 }, new A.ListStyle());
         foreach (string line in lines)
             body.Append(new A.Paragraph(new A.ParagraphProperties(new A.LineSpacing(new A.SpacingPercent { Val = 115000 })),
                 new A.Run(new A.RunProperties(new A.SolidFill(new A.RgbColorModelHex { Val = "20252B" }),
