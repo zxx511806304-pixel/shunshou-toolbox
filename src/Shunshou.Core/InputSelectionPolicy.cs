@@ -2,7 +2,7 @@ namespace Shunshou.Core;
 
 public enum InputTool
 {
-    TargetZip, CreateZip, ExtractZip, Archive, Pdf, MergePdf, ImageConvert, CropImage, Ocr, Media, TrimMedia, ExtractAudio, Search, Rename, UndoRename
+    TargetZip, CreateZip, ExtractZip, Archive, Pdf, MergePdf, WordToPdf, ImageConvert, CropImage, Ocr, Media, TrimMedia, ExtractAudio, Search, Rename, UndoRename
 }
 
 public sealed record InputSelectionResult(
@@ -56,6 +56,7 @@ public static class InputSelectionPolicy
         InputTool.TargetZip or InputTool.ExtractZip => [".zip"],
         InputTool.Archive => SevenZipService.SupportedExtensions,
         InputTool.Pdf or InputTool.MergePdf => [".pdf"],
+        InputTool.WordToPdf => [".docx"],
         InputTool.ImageConvert or InputTool.CropImage or InputTool.Ocr => ImageExtensions.ToArray(),
         InputTool.Media or InputTool.TrimMedia or InputTool.ExtractAudio => MediaExtensions.ToArray(),
         InputTool.UndoRename => [".json"],
@@ -126,6 +127,7 @@ public static class InputSelectionPolicy
             InputTool.ExtractZip => file && extension.Equals(".zip", StringComparison.OrdinalIgnoreCase),
             InputTool.Archive => file && SevenZipService.SupportedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase),
             InputTool.Pdf or InputTool.MergePdf => file && extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase),
+            InputTool.WordToPdf => file && extension.Equals(".docx", StringComparison.OrdinalIgnoreCase),
             InputTool.ImageConvert or InputTool.CropImage or InputTool.Ocr => file && ImageExtensions.Contains(extension),
             InputTool.Media or InputTool.TrimMedia or InputTool.ExtractAudio => file && MediaExtensions.Contains(extension),
             InputTool.Rename => file,
@@ -144,6 +146,7 @@ public static class InputSelectionPolicy
         InputTool.ExtractZip => "请添加一个 ZIP 压缩包。",
         InputTool.Archive => "请添加一个 .7z、.rar、.zip、.tar 或 .cab 压缩包。",
         InputTool.Pdf or InputTool.MergePdf => "请添加 PDF 文件。",
+        InputTool.WordToPdf => "请添加 .docx 格式的 Word 文档。",
         InputTool.ImageConvert or InputTool.CropImage or InputTool.Ocr => "请添加 PNG、JPG、WebP、BMP、TIFF 或 GIF 图片。",
         InputTool.Media or InputTool.TrimMedia or InputTool.ExtractAudio => "请添加音频或视频文件，例如 WAV、MP3、FLAC、MP4、MOV 或 MKV。",
         InputTool.Search => "请添加一个可访问的文件或文件夹作为搜索范围。",

@@ -5,7 +5,8 @@ Directory.CreateDirectory(root);
 Console.WriteLine($"Test artifacts: {root}");
 try
 {
-    if (args.Contains("--video-download")) await VideoDownloadSmokeTests.RunAsync(root);
+    if (args.Contains("--clipboard-pins")) await ClipboardPinTests.RunAsync(root);
+    else if (args.Contains("--video-download")) await VideoDownloadSmokeTests.RunAsync(root);
     else if (args.Contains("--system-maintenance")) await SystemMaintenanceTests.RunAsync(root);
     else if (args.Contains("--recovery")) await RecoveryTests.RunAsync(root);
     else if (args.Contains("--compression-adaptive")) await CompressionTests.RunAdaptiveAsync(root);
@@ -19,6 +20,11 @@ try
     else if (args.Contains("--tools")) await NewToolsTests.RunAsync(root);
     else if (args.Contains("--files")) await FileTests.RunAsync(root);
     else if (args.Contains("--pdf-layout")) await PdfLayoutTests.RunAsync(root);
+    else if (args.Contains("--pdf-enhance")) await PdfEnhanceTests.RunAsync(root);
+    else if (args.Contains("--screenshot-annotation")) await ScreenshotAnnotationTests.RunAsync(root);
+    else if (args.Contains("--pdf-reader")) await PdfReaderTests.RunAsync(root);
+    else if (args.Contains("--markdown")) await MarkdownTests.RunAsync(root);
+    else if (args.Contains("--quick-launcher")) await QuickLauncherTests.RunAsync(root);
     else if (args.Contains("--pdf")) await PdfTests.RunAsync(root);
     else if (args.Contains("--ocr")) await OcrTests.RunAsync(root);
     else if (args.Contains("--compression")) await CompressionTests.RunAsync(root);

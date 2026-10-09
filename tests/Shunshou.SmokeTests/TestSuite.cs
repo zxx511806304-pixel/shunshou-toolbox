@@ -7,6 +7,7 @@ public static class TestSuite
     {
         Directory.CreateDirectory(root);
         await AppPathTests.RunAsync(root);
+        await ClipboardPinTests.RunAsync(root);
         await CharacterLibraryTests.RunAsync(root);
         await NewToolsTests.RunAsync(root);
         await InputTests.RunAsync(root);
@@ -17,9 +18,14 @@ public static class TestSuite
         await MediaTests.RunAsync(root);
         await MediaTests.RunPrecisionAsync(root);
         await PdfTests.RunAsync(root);
+        await PdfEnhanceTests.RunAsync(root);
+        await PdfReaderTests.RunAsync(root);
+        await MarkdownTests.RunAsync(root);
+        await QuickLauncherTests.RunAsync(root);
         await OcrTests.RunAsync(root);
         await FileTests.RunAsync(root);
         await RecoveryTests.RunAsync(root);
+        await ScreenshotAnnotationTests.RunAsync(root);
         Console.WriteLine("PASS: all smoke-test groups completed.");
     }
 }

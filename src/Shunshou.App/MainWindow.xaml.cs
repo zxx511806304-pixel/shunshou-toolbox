@@ -51,9 +51,10 @@ public sealed partial class MainWindow : Window
         InitializeSearch();
         InitializeFileDrop();
         InitializeWorkspaces(hwnd);
+        InitializeQuickLauncher();
         Navigation.SelectedItem = Navigation.MenuItems[0];
         SelectCategory("compression");
-        Closed += (_, _) => { _cancellation?.Cancel(); DisposeAppearance(); ShopArea.CloseQr(); DisposeSearch(); OcrEditor.Dispose(); Uninstaller.Dispose(); Recovery.Dispose(); VideoTools.Dispose(); SubtitleTools.Dispose(); WebPdfTools.Dispose(); RecordingTools.Dispose(); _tray?.Dispose(); _minimizeHook?.Dispose(); };
+        Closed += (_, _) => { _cancellation?.Cancel(); DisposeAppearance(); ShopArea.CloseQr(); DisposeSearch(); OcrEditor.Dispose(); Uninstaller.Dispose(); Recovery.Dispose(); VideoTools.Dispose(); SubtitleTools.Dispose(); WebPdfTools.Dispose(); MarkdownTools.Dispose(); RecordingTools.Dispose(); DisposeQuickLauncher(); _tray?.Dispose(); _minimizeHook?.Dispose(); };
     }
 
     private string Operation => _category == "shop" ? "" : OperationBox.SelectedItem as string ?? Operations[_category][0];
@@ -77,7 +78,7 @@ public sealed partial class MainWindow : Window
         {
             CategoryTitle.Text = "顺手小店";
             CategorySubtitle.Text = "手机卡、会员与生活优惠";
-            foreach (var element in new UIElement[] { OperationCard, GeneralArea, SearchWorkspace, OcrArea, Uninstaller, Recovery, VideoTools, SubtitleTools, WebPdfTools, RecordingTools, CharacterLibrary, TextDiffTools, QrTools, PdfPageTools, DiskCleanupTools, LargeFilesTools, DuplicateTools, StartupTools, HijackTools, NetworkTools, OfficeRescueTools, ClipboardTools, PasswordTools, RunFooter })
+            foreach (var element in new UIElement[] { OperationCard, GeneralArea, SearchWorkspace, OcrArea, Uninstaller, Recovery, VideoTools, SubtitleTools, WebPdfTools, RecordingTools, CharacterLibrary, TextDiffTools, QrTools, MarkdownTools, PdfPageTools, PdfReaderTools, DiskCleanupTools, LargeFilesTools, DuplicateTools, StartupTools, HijackTools, NetworkTools, OfficeRescueTools, ClipboardTools, PasswordTools, RunFooter })
                 SetVisible(element, false);
             UpdateConnectionStatus();
             StatusInfo.IsOpen = false;
@@ -135,7 +136,10 @@ public sealed partial class MainWindow : Window
         bool textDiff = op == "文本对比";
         bool qr = op == "二维码";
         bool pdfPages = op == "整理 PDF 页面";
-        bool panelTool = characters || textDiff || qr || pdfPages;
+        bool pdfRead = op == "PDF 阅读";
+        bool screenshot = op == "截图标注";
+        bool markdown = op == "Markdown 编辑";
+        bool panelTool = characters || textDiff || qr || pdfPages || pdfRead || screenshot || markdown;
         SetVisible(RecordingTools, recording);
         if (recording) _ = RecordingTools.EnsureLoadedAsync();
         SetVisible(SubtitleTools, subtitles);
@@ -147,6 +151,10 @@ public sealed partial class MainWindow : Window
         SetVisible(QrTools, qr);
         SetVisible(PdfPageTools, pdfPages);
         if (pdfPages) _ = PdfPageTools.SetDocumentAsync(_activeInputPath);
+        SetVisible(PdfReaderTools, pdfRead);
+        if (pdfRead) _ = PdfReaderTools.SetDocumentAsync(_activeInputPath);
+        SetVisible(ScreenshotTools, screenshot);
+        SetVisible(MarkdownTools, markdown);
         UpdateConnectionStatus();
         SetVisible(VideoTools, videoTool);
         if (videoTool) VideoTools.SelectMode(op == "视频水印处理");
@@ -195,14 +203,15 @@ public sealed partial class MainWindow : Window
             if (TrimModeBox.SelectedIndex < 0) TrimModeBox.SelectedIndex = 0;
         }
         SetVisible(PdfPanel, pdfImages);
+        SetVisible(WatermarkPanel, op == "PDF 加水印");
         SetVisible(PdfOfficeMode, op is "PDF 转可编辑 Word" or "PDF 转可编辑 PPT");
         SetVisible(SearchWorkspace, op == "按名称搜索");
         SetVisible(GeneralArea, op != "按名称搜索" && !maintenance && !ocr && !software && !recovery && !videoTool && !subtitles && !webPdf && !recording && !panelTool);
         ResetSearchView();
         SetVisible(RenamePanel, op == "批量重命名");
-        SetVisible(OutputPanel, !maintenance && op is not "按名称搜索" and not "批量重命名" and not "撤销重命名" and not "特殊字符库" and not "文本对比" and not "二维码" and not "整理 PDF 页面");
+        SetVisible(OutputPanel, !maintenance && op is not "按名称搜索" and not "批量重命名" and not "撤销重命名" and not "特殊字符库" and not "文本对比" and not "二维码" and not "整理 PDF 页面" and not "PDF 阅读" and not "截图标注" and not "Markdown 编辑");
         SetVisible(AddFolderButton, _category == "compression" || op == "按名称搜索");
-        SetVisible(AddFilesButton, !maintenance && op is not ("按名称搜索" or "特殊字符库" or "文本对比" or "二维码" or "整理 PDF 页面"));
+        SetVisible(AddFilesButton, !maintenance && op is not ("按名称搜索" or "特殊字符库" or "文本对比" or "二维码" or "整理 PDF 页面" or "截图标注" or "Markdown 编辑"));
         FeatureNote.IsOpen = false;
         if (imageConvert) FormatBox.ItemsSource = new[] { "jpg", "png", "webp", "bmp", "tiff" };
         else if (trim) FormatBox.ItemsSource = new[] { "mp4", "mp3", "m4a", "wav", "flac" };
@@ -223,19 +232,25 @@ public sealed partial class MainWindow : Window
             "撤销重命名" => ("选择此前生成的重命名记录", "选择 rename-history 文件夹里的 JSON 记录", "根据本地记录恢复原文件名。文件内容或位置变化时会停止恢复。"),
             "图片格式转换" => ("拖入一张或多张图片", "支持批量转换；多帧图片逐帧导出", "转为常用图片格式，可按需调整尺寸与编码质量。"),
             "合并 PDF" => ("按顺序选择多份 PDF", "合并顺序与添加顺序相同", "把多份材料合成一个 PDF，生成新文件。"),
+            "PDF 加水印" => ("拖入一份 PDF 文档", "填写水印文字与透明度，原 PDF 保留", "在每页中央添加 45° 斜向的半透明灰色水印文字，生成新文件。"),
+            "PDF 压缩" => ("拖入一份 PDF 文档", "按 150 DPI 重排页面，原 PDF 保留", "把每页渲染为压缩图片后重建 PDF，扫描件和图片较多的文档缩小明显；文字将变为图片。若原文件已足够小，会保留原文件并提示。"),
+            "Word 转 PDF" => ("拖入一份 .docx 文档", "保留段落、标题、加粗斜体、表格与图片", "在本地把 Word 文档排版为 PDF；复杂版式（页眉页脚、文本框、浮动对象）按近似方式处理。"),
             "链接下载视频" => ("", "", "粘贴链接，选择画质，保存到电脑。"),
             "视频水印处理" => ("", "", "框选画面区域，预览效果后导出新视频。"),
             "下载视频字幕" => ("", "", "提取网站提供的字幕，保存为字幕文件或纯文字。"),
             "屏幕录制" => ("", "", "选择屏幕或区域，录下演示、课程与操作过程。"),
+            "截图标注" => ("", "", "框选屏幕区域后标注矩形、箭头、马赛克、序号或文字，复制或保存为 PNG。"),
             "网页转 PDF" => ("", "", "粘贴网址，预览网页，保存为 PDF。"),
             "链接提取文字" => ("", "", "打开文章或章节，提取正文，编辑并保存文字。"),
             "特殊字符库" => ("", "", "整理好的常用特殊字符，点击即可复制；可按名称或编码查找。"),
             "文本对比" => ("", "", "比较两份文本的差异，只在本机处理。"),
             "二维码" => ("", "", "生成或识别二维码，图片与内容都在本机处理。"),
+            "Markdown 编辑" => ("", "", "轻量 Markdown 写作：编辑、预览、导出 PDF。"),
             "图片裁剪" => ("拖入一张或多张图片", "按比例或像素裁剪，批量使用同一设置", "先预览第一张的效果，确认后再对全部图片应用相同裁剪。"),
             "截取音视频片段" => ("拖入一个音频或视频文件", "填写起止时间，截取其中一段", "无损复制不重新编码，起止会落在关键帧；精确模式重新编码，可精确到填写的时间。"),
             "提取音轨" => ("拖入一个视频或音频文件", "取出音频轨道，保存为常用音频格式", "从视频中提取音轨，或把音频转成 MP3、M4A、WAV、FLAC。"),
             "整理 PDF 页面" => ("", "", "调整页序、删除或旋转页面，生成新的 PDF。"),
+            "PDF 阅读" => ("", "", "在本机翻页阅读 PDF；底部可一键跳到合并、拆分、整理、加水印或压缩。"),
             "PDF 转图片" => ("拖入一份 PDF 文档", "可逐页导出，也可拼接为一张高清长图", "按设定 DPI 把 PDF 页面渲染为 PNG；也可把全部页面竖向拼接成一张高清长图，原 PDF 保留。"),
             "C 盘清理" => ("", "", "扫描缓存与临时文件，勾选后一键清理，释放 C 盘空间。"),
             "大文件扫描" => ("", "", "找出磁盘上最占空间的文件，按需打开位置或删除到回收站。"),
@@ -360,6 +375,8 @@ public sealed partial class MainWindow : Window
         string renamePrefix = RenamePrefix.Text;
         int renameStart = double.IsFinite(RenameStart.Value) ? (int)RenameStart.Value : 1;
         bool preservePdfLayout = PdfOfficeMode.SelectedIndex == 0;
+        string watermarkText = WatermarkText.Text;
+        double watermarkOpacity = double.IsFinite(WatermarkOpacity.Value) ? WatermarkOpacity.Value / 100.0 : 0.2;
         // Everything that reads a control must happen here, on the UI thread, before the worker starts.
         CropOptions cropOptions = CurrentCropOptions();
         bool copyStreams = TrimModeBox.SelectedIndex == 0;
@@ -373,6 +390,7 @@ public sealed partial class MainWindow : Window
         }
         if (op == "按名称搜索" && query.Length == 0) { ShowError("请输入要查找的名称。"); return; }
         if (op == "合并 PDF" && inputs.Length < 2) { ShowError("合并 PDF 至少需要两份文件。"); return; }
+        if (op == "PDF 加水印" && watermarkText.Trim().Length == 0) { ShowError("请填写水印文字。"); return; }
         if (op is not "按名称搜索" and not "批量重命名" and not "撤销重命名" && string.IsNullOrWhiteSpace(output)) { ShowError("请选择输出文件夹。"); return; }
         _cancellation = new CancellationTokenSource();
         var token = _cancellation.Token;
@@ -442,6 +460,12 @@ public sealed partial class MainWindow : Window
                         return Saved(await pdf.MergeAsync(inputs, output, progress, token));
                     case "拆分 PDF":
                         return SavedMany(await pdf.SplitAsync(inputs[0], output, progress, token), output);
+                    case "PDF 加水印":
+                        return Saved(await pdf.AddWatermarkAsync(inputs[0], output, watermarkText, watermarkOpacity, progress, token));
+                    case "PDF 压缩":
+                        return Saved(await pdf.CompressAsync(inputs[0], output, progress, token));
+                    case "Word 转 PDF":
+                        return Saved(await new WordToPdfService().ConvertAsync(inputs[0], output, progress, token));
                     case "图片格式转换":
                         return SavedMany(await new ImageService().ConvertAsync(inputs, output, format, width, quality, progress, token), output);
                     case "图片裁剪":
@@ -492,7 +516,7 @@ public sealed partial class MainWindow : Window
         Navigation.IsPaneToggleButtonVisible = false;
         foreach (var item in Navigation.MenuItems.OfType<NavigationViewItem>()) item.IsEnabled = !busy;
         AddFilesButton.IsEnabled = AddFolderButton.IsEnabled = ClearButton.IsEnabled = !busy;
-        foreach (Control control in new Control[] { TargetSize, AllowLossy, AllowResize, FormatBox, ImageQuality, PdfDpi, SearchQuery, ImagesOnly, RenamePrefix, RenameStart, OutputDirectory, ImageWidth })
+        foreach (Control control in new Control[] { TargetSize, AllowLossy, AllowResize, FormatBox, ImageQuality, PdfDpi, SearchQuery, ImagesOnly, RenamePrefix, RenameStart, OutputDirectory, ImageWidth, WatermarkText, WatermarkOpacity })
             control.IsEnabled = !busy;
         AllowResize.IsEnabled = !busy && AllowLossy.IsChecked == true;
         SearchScopeBox.IsEnabled = ChooseSearchFolderButton.IsEnabled = PdfOfficeMode.IsEnabled = !busy;

@@ -1,0 +1,47 @@
+<UserControl x:Class="Shunshou.App.PdfReaderWorkspace" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid RowSpacing="12">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Border Style="{StaticResource CardStyle}" Padding="18,14">
+      <Grid ColumnSpacing="12">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel Spacing="4" VerticalAlignment="Center">
+          <TextBlock x:Name="DocumentTitle" Text="拖入或添加一份 PDF 开始阅读" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+          <TextBlock x:Name="DocumentDetail" Text="翻页、缩放与跳转只在本机渲染；底部可跳转到其它 PDF 工具继续处理。" Style="{StaticResource MutedTextStyle}"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button x:Name="PrevButton" Content="上一页" Click="Prev_Click" IsEnabled="False" AutomationProperties.Name="上一页"/>
+          <TextBlock x:Name="PageLabel" Text="0 / 0" FontFamily="Consolas" FontSize="13" VerticalAlignment="Center" MinWidth="64" TextAlignment="Center"/>
+          <Button x:Name="NextButton" Content="下一页" Click="Next_Click" IsEnabled="False" AutomationProperties.Name="下一页"/>
+          <NumberBox x:Name="JumpBox" Header="跳转到" Minimum="1" Maximum="1" Width="120" SpinButtonPlacementMode="Compact" ValueChanged="Jump_ValueChanged" IsEnabled="False" AutomationProperties.Name="跳转到页码"/>
+          <Button x:Name="ZoomOutButton" Content="−" Click="ZoomOut_Click" IsEnabled="False" AutomationProperties.Name="缩小"/>
+          <TextBlock x:Name="ZoomLabel" Text="100%" FontFamily="Consolas" FontSize="13" VerticalAlignment="Center" MinWidth="48" TextAlignment="Center"/>
+          <Button x:Name="ZoomInButton" Content="+" Click="ZoomIn_Click" IsEnabled="False" AutomationProperties.Name="放大"/>
+          <Button x:Name="FitWidthButton" Content="适配宽度" Click="FitWidth_Click" IsEnabled="False" AutomationProperties.Name="缩放以适配窗口宽度"/>
+          <Button x:Name="PickButton" Content="选择 PDF" Click="Pick_Click" AutomationProperties.Name="选择要阅读的 PDF"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+    <Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="8" MinHeight="360">
+      <Grid>
+        <ScrollViewer x:Name="PageScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" ZoomMode="Disabled">
+          <Grid HorizontalAlignment="Center" VerticalAlignment="Top" Padding="8">
+            <Image x:Name="PageImage" Stretch="None" AutomationProperties.Name="当前 PDF 页面"/>
+          </Grid>
+        </ScrollViewer>
+        <TextBlock x:Name="EmptyHint" Text="拖入或添加一份 PDF 开始阅读" Style="{StaticResource MutedTextStyle}" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+        <ProgressRing x:Name="Rendering" IsActive="False" Width="36" Height="36" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Grid>
+    </Border>
+    <InfoBar x:Name="Notice" Grid.Row="2" IsOpen="False" IsClosable="True" Severity="Informational"/>
+    <Border Grid.Row="3" Style="{StaticResource CardStyle}" Padding="18,12">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Text="继续处理这份 PDF：" VerticalAlignment="Center" Style="{StaticResource MutedTextStyle}" Margin="0,0,6,0"/>
+        <Button x:Name="MergeToolButton" Content="合并 PDF" Click="Tool_Click" Tag="合并 PDF" IsEnabled="False"/>
+        <Button x:Name="SplitToolButton" Content="拆分 PDF" Click="Tool_Click" Tag="拆分 PDF" IsEnabled="False"/>
+        <Button x:Name="OrganizeToolButton" Content="整理页面" Click="Tool_Click" Tag="整理 PDF 页面" IsEnabled="False"/>
+        <Button x:Name="WatermarkToolButton" Content="加水印" Click="Tool_Click" Tag="PDF 加水印" IsEnabled="False"/>
+        <Button x:Name="CompressToolButton" Content="压缩" Click="Tool_Click" Tag="PDF 压缩" IsEnabled="False"/>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

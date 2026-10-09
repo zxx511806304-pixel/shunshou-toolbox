@@ -493,12 +493,12 @@ public sealed partial class PdfService
         if (!File.Exists(input)) throw new FileNotFoundException("找不到 PDF 文件。", input);
         if (!Path.GetExtension(input).Equals(".pdf", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("请选择 PDF 文件。", nameof(input));
     }
-    private static string CreateStaging(string outputDir)
+    internal static string CreateStaging(string outputDir)
     {
         string path = Path.Combine(Path.GetFullPath(outputDir), ".shunshou-pdf-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path); return path;
     }
-    private static string UniquePath(string folder, string name, string extension)
+    internal static string UniquePath(string folder, string name, string extension)
     {
         foreach (char invalid in Path.GetInvalidFileNameChars()) name = name.Replace(invalid, '_');
         if (name.Length > 100) name = name[..100];
@@ -507,7 +507,7 @@ public sealed partial class PdfService
         return candidate;
     }
     private static void TryDelete(string path) { try { File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
-    private static void CleanupStaging(string path)
+    internal static void CleanupStaging(string path)
     {
         // The path is created by this service; no input-derived recursion or following of user folders.
         try { if (Directory.Exists(path)) Directory.Delete(path, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }

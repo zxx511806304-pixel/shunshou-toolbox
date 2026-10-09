@@ -20,6 +20,8 @@ public sealed partial class MainWindow
         "解压 7z / RAR" => InputTool.Archive,
         "解压压缩包" => InputTool.Archive,
         "合并 PDF" => InputTool.MergePdf,
+        "PDF 阅读" => InputTool.Pdf,
+        "Word 转 PDF" => InputTool.WordToPdf,
         "图片格式转换" => InputTool.ImageConvert,
         "图片裁剪" => InputTool.CropImage,
         "图片提取文字" => InputTool.Ocr,

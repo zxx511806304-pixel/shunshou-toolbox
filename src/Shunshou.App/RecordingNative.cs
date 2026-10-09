@@ -101,6 +101,7 @@ internal static class RecordingNative
     [DllImport("user32.dll")] internal static extern bool InvalidateRect(nint hwnd, nint rectangle, bool erase);
     [DllImport("user32.dll")] internal static extern bool UpdateWindow(nint hwnd);
     [DllImport("user32.dll")] internal static extern uint GetDpiForWindow(nint hwnd);
+    [DllImport("user32.dll")] internal static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll")] internal static extern uint GetSysColor(int index);
     [DllImport("user32.dll", SetLastError = true)] internal static extern nint SetThreadDpiAwarenessContext(nint context);
     [DllImport("user32.dll", SetLastError = true)] internal static extern bool SetLayeredWindowAttributes(nint hwnd, uint key, byte alpha, uint flags);

@@ -33,8 +33,22 @@ public sealed partial class MainWindow
         RecordingTools.BusyChanged += (_, busy) => SetBusy(busy);
         SubtitleTools.HostWindowHandle = WebPdfTools.HostWindowHandle = hwnd;
         TextDiffTools.HostWindowHandle = QrTools.HostWindowHandle = PdfPageTools.HostWindowHandle = hwnd;
+        MarkdownTools.HostWindowHandle = hwnd;
+        MarkdownTools.BusyChanged += (_, busy) => SetBusy(busy);
         PdfPageTools.BusyChanged += (_, busy) => SetBusy(busy);
         PdfPageTools.PickRequested += async (_, _) => await PickInputsForCurrentToolAsync();
+        PdfReaderTools.HostWindowHandle = hwnd;
+        PdfReaderTools.PickRequested += async (_, _) => await PickInputsForCurrentToolAsync();
+        PdfReaderTools.ToolRequested += (_, operation) =>
+        {
+            string? path = PdfReaderTools.DocumentPath;
+            if (path is null || _busy) return;
+            NavigateToTool("pdf", operation);
+            if (Operation == operation) AcceptInputPaths([path]);
+        };
+        ScreenshotTools.HostWindowHandle = hwnd;
+        ScreenshotTools.BusyChanged += (_, busy) => SetBusy(busy);
+        ScreenshotTools.CaptureRequested += (_, request) => request.PerformAsync = CaptureScreenshotRegionAsync;
         SubtitleTools.BusyChanged += (_, busy) => SetBusy(busy);
         WebPdfTools.BusyChanged += (_, busy) => SetBusy(busy);
         InputList.MaximumListHeight = 140;
@@ -211,6 +225,30 @@ public sealed partial class MainWindow
         // The tray icon persists across minimize/restore cycles; do not destroy it here.
     }
 
+    /// <summary>
+    /// Hides the main window so it never appears in the snapshot, then lets the user drag a region on a
+    /// full-screen overlay covering the whole virtual screen. Returns the cropped PNG path, or null when cancelled.
+    /// </summary>
+    private async Task<string?> CaptureScreenshotRegionAsync()
+    {
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        _suppressNextMinimizeTray = true;
+        AppWindow.Hide();
+        // Give the compositor a moment to actually remove the window from the screen.
+        await Task.Delay(260);
+        try
+        {
+            const int VirtualScreenX = 76, VirtualScreenY = 77, VirtualScreenWidth = 78, VirtualScreenHeight = 79;
+            int left = RecordingNative.GetSystemMetrics(VirtualScreenX);
+            int top = RecordingNative.GetSystemMetrics(VirtualScreenY);
+            int width = RecordingNative.GetSystemMetrics(VirtualScreenWidth);
+            int height = RecordingNative.GetSystemMetrics(VirtualScreenHeight);
+            if (width < 16 || height < 16) throw new InvalidOperationException("没有可用的屏幕区域。");
+            return await ScreenshotOverlay.SelectAsync(hwnd, left, top, width, height);
+        }
+        finally { ActivateWindow(); }
+    }
+
     private void BuildOperationButtons()
     {
         OperationButtons.Children.Clear();
@@ -248,7 +286,7 @@ public sealed partial class MainWindow
 
     private void RestoreInputDraft()
     {
-        if (_category is "software" or "text" or "system" or "office" || Operation is "误删恢复" or "链接下载视频" or "视频水印处理" or "网页转 PDF" or "下载视频字幕" or "屏幕录制" or "整理 PDF 页面") return;
+        if (_category is "software" or "text" or "system" or "office" || Operation is "误删恢复" or "链接下载视频" or "视频水印处理" or "网页转 PDF" or "下载视频字幕" or "屏幕录制" or "整理 PDF 页面" or "截图标注") return;
         var draft = _inputWorkspace.SwitchTo(CurrentInputTool, _inputs, _activeInputPath);
         _inputDraftMessage = draft.Message;
         _inputs.Clear();
@@ -276,6 +314,8 @@ public sealed partial class MainWindow
             _inputSyncTask = SynchronizeOcrInputAsync(_activeInputPath);
         if (Operation == "整理 PDF 页面" && !StringComparer.OrdinalIgnoreCase.Equals(PdfPageTools.DocumentPath, _activeInputPath))
             _ = PdfPageTools.SetDocumentAsync(_activeInputPath);
+        if (Operation == "PDF 阅读" && !StringComparer.OrdinalIgnoreCase.Equals(PdfReaderTools.DocumentPath, _activeInputPath))
+            _ = PdfReaderTools.SetDocumentAsync(_activeInputPath);
     }
 
     private async Task SynchronizeOcrInputAsync(string? path)

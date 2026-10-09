@@ -10,7 +10,7 @@ public static class InputTests
         string directory = Path.Combine(root, "inputs-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         Dictionary<string, string> files = [];
-        foreach (string name in new[] { "截图.PNG", "照片.jpg", "材料.pdf", "附件.PDF", "图片.zip", "记录.json", "声音.WAV", "说明.txt" })
+        foreach (string name in new[] { "截图.PNG", "照片.jpg", "材料.pdf", "附件.PDF", "图片.zip", "记录.json", "声音.WAV", "说明.txt", "文档.docx" })
         {
             files[name] = Path.Combine(directory, name);
             await File.WriteAllTextAsync(files[name], "Input selection fixture: " + name);
@@ -49,6 +49,7 @@ public static class InputTests
             {
                 InputTool.TargetZip or InputTool.ExtractZip or InputTool.Archive => files["图片.zip"],
                 InputTool.Pdf or InputTool.MergePdf => files["材料.pdf"],
+                InputTool.WordToPdf => files["文档.docx"],
                 InputTool.ImageConvert or InputTool.CropImage or InputTool.Ocr => files["截图.PNG"],
                 InputTool.Media or InputTool.TrimMedia or InputTool.ExtractAudio => files["声音.WAV"],
                 InputTool.UndoRename => files["记录.json"],

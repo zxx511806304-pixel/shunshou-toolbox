@@ -9,11 +9,21 @@
           <ColumnDefinition Width="Auto"/>
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
         <FontIcon Grid.Column="0" Glyph="&#xE8A5;" Foreground="{ThemeResource MutedBrush}" VerticalAlignment="Center"/>
         <TextBlock Grid.Column="1" Text="{Binding TimeText}" FontSize="12" Foreground="{ThemeResource MutedBrush}" VerticalAlignment="Center"/>
         <TextBlock Grid.Column="2" Text="{Binding PreviewText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTipService.ToolTip="{Binding PreviewText}"/>
         <Button Grid.Column="3" Content="复制" Padding="12,4" Click="CopyRow_Click" Tag="{Binding}" AutomationProperties.Name="复制这条记录"/>
+        <Button Grid.Column="4" Content="纯文本" Padding="12,4" Click="PlainCopyRow_Click" Tag="{Binding}" ToolTipService.ToolTip="以纯文本格式复制，再粘贴时不带格式" AutomationProperties.Name="以纯文本复制这条记录"/>
+        <Button Grid.Column="5" Padding="8,4" Click="PinRow_Click" Tag="{Binding}" ToolTipService.ToolTip="{Binding PinTip}" AutomationProperties.Name="{Binding PinTip}">
+          <FontIcon Glyph="{Binding PinGlyph}" FontSize="14"/>
+        </Button>
+        <Button Grid.Column="6" Padding="8,4" Click="DeleteRow_Click" Tag="{Binding}" Visibility="{Binding DeleteVisibility}" ToolTipService.ToolTip="删除这条置顶片段" AutomationProperties.Name="删除这条置顶片段">
+          <FontIcon Glyph="&#xE74D;" FontSize="14"/>
+        </Button>
       </Grid>
     </DataTemplate>
     <DataTemplate x:Key="ImageRowTemplate">
@@ -57,26 +67,46 @@
     <Border Style="{StaticResource CardStyle}" Padding="18,14">
       <StackPanel Spacing="8">
         <TextBlock Text="剪贴板历史记录" FontSize="16" FontWeight="SemiBold"/>
-        <TextBlock Text="只保留本次运行期间的文字 / 图片 / 文件记录，关闭窗口即清空，不上传。" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"/>
+        <TextBlock Text="文字 / 图片 / 文件记录只保留在本次运行期间，不上传；置顶的文字片段会保存在本机数据目录，重启后仍保留。按 Ctrl+Shift+V 可把剪贴板里的富文本替换为纯文本。" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"/>
         <StackPanel Orientation="Horizontal" Spacing="10">
           <ToggleButton x:Name="PauseToggle" Content="暂停记录" Click="Pause_Click" AutomationProperties.Name="暂停或继续记录剪贴板"/>
           <Button x:Name="ClearButton" Content="清空" Click="Clear_Click" AutomationProperties.Name="清空剪贴板记录"/>
+          <Button x:Name="OcrButton" Click="OcrClipboard_Click" AutomationProperties.Name="识别剪贴板图片文字">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <FontIcon Glyph="&#xE8B9;" FontSize="14"/>
+              <TextBlock Text="识别剪贴板图片文字"/>
+            </StackPanel>
+          </Button>
+          <ProgressRing x:Name="OcrRing" Width="18" Height="18" IsActive="False" Visibility="Collapsed" VerticalAlignment="Center" AutomationProperties.Name="正在识别图片文字"/>
           <TextBlock x:Name="StatusText" Style="{StaticResource MutedTextStyle}" VerticalAlignment="Center" TextWrapping="Wrap"/>
         </StackPanel>
         <InfoBar x:Name="Notice" IsOpen="False" IsClosable="True" Severity="Warning"/>
       </StackPanel>
     </Border>
     <Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="12">
-      <Grid>
-        <ListView x:Name="History"
-                  HorizontalContentAlignment="Stretch"
-                  AutomationProperties.Name="剪贴板历史记录列表"/>
-        <TextBlock x:Name="EmptyLabel"
-                   Text="复制文字、图片或文件后会出现在这里"
-                   Style="{StaticResource MutedTextStyle}"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"
-                   IsHitTestVisible="False"/>
+      <Grid RowSpacing="8">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <StackPanel x:Name="PinnedSection" Visibility="Collapsed" Spacing="4">
+          <TextBlock Text="已置顶" FontSize="13" FontWeight="SemiBold"/>
+          <ListView x:Name="PinnedHistory"
+                    HorizontalContentAlignment="Stretch"
+                    MaxHeight="220"
+                    AutomationProperties.Name="已置顶的剪贴板片段"/>
+        </StackPanel>
+        <Grid Grid.Row="1">
+          <ListView x:Name="History"
+                    HorizontalContentAlignment="Stretch"
+                    AutomationProperties.Name="剪贴板历史记录列表"/>
+          <TextBlock x:Name="EmptyLabel"
+                     Text="复制文字、图片或文件后会出现在这里"
+                     Style="{StaticResource MutedTextStyle}"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     IsHitTestVisible="False"/>
+        </Grid>
       </Grid>
     </Border>
   </Grid>
